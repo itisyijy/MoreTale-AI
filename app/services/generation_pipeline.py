@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -257,9 +258,22 @@ def run_story_generation_pipeline(
                 raise
             service_errors["quiz"] = str(error)
 
-    if request.enable_tts:
+    tts_future: Future[dict[str, Any]] | None = None
+    illustration_future: Future[dict[str, Any]] | None = None
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        if request.enable_tts:
+            tts_future = executor.submit(
+                generate_tts, request=request, story=story, output_dir=output_dir
+            )
+        if request.enable_illustration:
+            illustration_future = executor.submit(
+                generate_illustrations, request=request, story=story, output_dir=output_dir
+            )
+
+    if tts_future is not None:
         try:
-            tts_result = generate_tts(request=request, story=story, output_dir=output_dir)
+            tts_result = tts_future.result()
             if strict_assets:
                 _raise_on_tts_failures(tts_result)
         except Exception as error:
@@ -267,13 +281,9 @@ def run_story_generation_pipeline(
                 raise
             service_errors["tts"] = str(error)
 
-    if request.enable_illustration:
+    if illustration_future is not None:
         try:
-            illustration_result = generate_illustrations(
-                request=request,
-                story=story,
-                output_dir=output_dir,
-            )
+            illustration_result = illustration_future.result()
             if strict_assets:
                 _raise_on_illustration_failures(illustration_result)
         except Exception as error:
