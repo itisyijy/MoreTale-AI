@@ -28,6 +28,35 @@ from app.services.story_result_builder import build_story_result_payload
 job_store = JobStore()
 
 
+def recover_interrupted_jobs() -> None:
+    from app.core.config import get_settings
+
+    outputs_dir = get_settings().outputs_dir
+    if not outputs_dir.is_dir():
+        return
+
+    recovered = 0
+    for meta_path in outputs_dir.glob("*/meta.json"):
+        try:
+            job = job_store.load_job(meta_path.parent.name)
+            if job is not None and job.get("status") == "running":
+                story_id = str(job.get("id", meta_path.parent.name))
+                job_store.mark_failed(
+                    story_id=story_id,
+                    error={
+                        "code": "SERVER_RESTARTED",
+                        "message": "job was interrupted by a server restart",
+                        "detail": None,
+                    },
+                )
+                recovered += 1
+        except Exception:
+            pass
+
+    if recovered:
+        logging.warning("startup: recovered %d interrupted job(s) → failed", recovered)
+
+
 def _extract_generation_flags(request_payload: dict[str, Any]) -> tuple[bool, bool, bool, bool]:
     generation = request_payload.get("generation")
     if not isinstance(generation, dict):

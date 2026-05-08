@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -20,6 +21,7 @@ from app.services.request_context import (
     reset_request_id,
     set_request_id,
 )
+from app.services.story_orchestrator import recover_interrupted_jobs
 
 
 def _json_safe_validation_errors(errors: Any) -> Any:
@@ -31,6 +33,12 @@ def _json_safe_validation_errors(errors: Any) -> Any:
     )
 
 
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    recover_interrupted_jobs()
+    yield
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     settings.outputs_dir.mkdir(parents=True, exist_ok=True)
@@ -39,6 +47,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="MoreTale FastAPI",
         version="0.1.0",
+        lifespan=_lifespan,
     )
     application.mount(
         settings.static_outputs_prefix,
