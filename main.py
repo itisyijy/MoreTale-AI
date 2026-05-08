@@ -80,6 +80,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds between TTS requests to respect RPM limits.",
     )
     parser.add_argument(
+        "--enable_critic",
+        action="store_true",
+        help="Run a critic agent after story generation and retry up to --critic_max_retries times.",
+    )
+    parser.add_argument(
+        "--critic_model",
+        default="gemini-2.5-flash",
+        help="Gemini model name to use for the critic agent.",
+    )
+    parser.add_argument(
+        "--critic_max_retries",
+        type=int,
+        default=2,
+        help="Maximum number of story regeneration attempts when critic returns 'revise'.",
+    )
+    parser.add_argument(
         "--enable_illustration",
         action="store_true",
         help="Generate a cover plus page-level illustrations from the story JSON.",
@@ -143,6 +159,9 @@ def build_pipeline_request(args: argparse.Namespace) -> StoryPipelineRequest:
         illustration_cover_aspect_ratio=args.illustration_cover_aspect_ratio,
         illustration_request_interval_sec=args.illustration_request_interval_sec,
         illustration_skip_existing=args.illustration_skip_existing,
+        enable_critic=args.enable_critic,
+        critic_model=args.critic_model,
+        critic_max_retries=args.critic_max_retries,
     )
 
 
@@ -173,6 +192,13 @@ def main() -> None:
 
         print(f"Generated story: {result.story.title_primary}")
         print(f"Story saved to: {result.story_json_path}")
+        if pipeline_request.enable_critic and result.critic_results:
+            final = result.critic_results[-1]
+            print(
+                f"Critic summary: attempts={len(result.critic_results)} "
+                f"final_verdict={final.overall_verdict} "
+                f"issues={len(final.issues)}"
+            )
         if pipeline_request.enable_quiz:
             print(f"Quiz saved to: {result.quiz_json_path}")
 
