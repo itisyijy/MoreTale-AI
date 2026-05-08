@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 from typing import Any
 
@@ -9,10 +10,12 @@ from app.core.auth import build_error
 from app.schemas.story import (
     StoryCreateAcceptedResponse,
     StoryCreateRequest,
+    StoryGenerateRequest,
     StoryResultResponse,
     StoryStatusResponse,
 )
 from app.services.generation_pipeline import (
+    StoryPipelineRequest,
     build_pipeline_request_from_story_request,
     run_story_generation_pipeline,
 )
@@ -102,6 +105,65 @@ def enqueue_story_generation(
 ) -> StoryCreateAcceptedResponse:
     story_id = make_story_id(child_name=request.child_name, theme=request.theme)
     request_payload = request.model_dump(mode="json")
+    job_store.initialize_job(story_id=story_id, request_payload=request_payload)
+
+    background_tasks.add_task(
+        run_story_generation_job_background,
+        story_id,
+        request_payload,
+        request_id,
+    )
+
+    log_event(
+        event="story.job.queued",
+        request_id=request_id,
+        story_id=story_id,
+        status="queued",
+    )
+
+    return StoryCreateAcceptedResponse(
+        id=story_id,
+        status="queued",
+        status_url=f"/api/stories/{story_id}",
+        result_url=f"/api/stories/{story_id}/result",
+    )
+
+
+def _pipeline_to_job_payload(pipeline: StoryPipelineRequest) -> dict[str, Any]:
+    """Serialize a StoryPipelineRequest into a job-store-compatible dict.
+
+    Stores the full pipeline fields under ``pipeline`` and mirrors the
+    generation-toggle flags into a top-level ``generation`` sub-dict so
+    that existing helpers (_extract_generation_flags, load_story_result)
+    work without modification.
+    """
+    return {
+        "_source": "pipeline",
+        "generation": {
+            "enable_quiz": pipeline.enable_quiz,
+            "enable_tts": pipeline.enable_tts,
+            "enable_illustration": pipeline.enable_illustration,
+            "enable_cover_illustration": pipeline.enable_cover_illustration,
+            "illustration_aspect_ratio": pipeline.illustration_aspect_ratio,
+            "illustration_cover_aspect_ratio": pipeline.illustration_cover_aspect_ratio,
+        },
+        "pipeline": dataclasses.asdict(pipeline),
+    }
+
+
+def enqueue_story_generation_backend(
+    request: StoryGenerateRequest,
+    background_tasks: BackgroundTasks,
+    request_id: str | None = None,
+) -> StoryCreateAcceptedResponse:
+    from app.services.backend_mapper import map_generate_request_to_pipeline
+
+    pipeline_request = map_generate_request_to_pipeline(request)
+    story_id = make_story_id(
+        child_name=pipeline_request.child_name,
+        theme=request.prompt,
+    )
+    request_payload = _pipeline_to_job_payload(pipeline_request)
     job_store.initialize_job(story_id=story_id, request_payload=request_payload)
 
     background_tasks.add_task(
@@ -299,12 +361,18 @@ def run_story_generation_job(
     )
 
     try:
-        request = StoryCreateRequest.model_validate(request_payload)
-        illustration_aspect_ratio = request.generation.illustration_aspect_ratio
-        cover_aspect_ratio = request.generation.illustration_cover_aspect_ratio
+        if request_payload.get("_source") == "pipeline":
+            pipeline_request = StoryPipelineRequest(**request_payload["pipeline"])
+            illustration_aspect_ratio = pipeline_request.illustration_aspect_ratio
+            cover_aspect_ratio = pipeline_request.illustration_cover_aspect_ratio
+        else:
+            _create_request = StoryCreateRequest.model_validate(request_payload)
+            illustration_aspect_ratio = _create_request.generation.illustration_aspect_ratio
+            cover_aspect_ratio = _create_request.generation.illustration_cover_aspect_ratio
+            pipeline_request = build_pipeline_request_from_story_request(_create_request)
         job_store.mark_running(story_id)
         pipeline_result = run_story_generation_pipeline(
-            request=build_pipeline_request_from_story_request(request),
+            request=pipeline_request,
             output_dir_factory=lambda _story, _story_model: get_run_dir(story_id),
             strict_assets=False,
         )
@@ -329,7 +397,7 @@ def run_story_generation_job(
             "story_json_url": to_static_outputs_url(story_json_path),
             "quiz_json_url": to_static_outputs_url(quiz_json_path) if quiz_json_path else None,
             "quiz": {
-                "enabled": request.generation.enable_quiz,
+                "enabled": include_quiz,
                 "service_error": service_errors["quiz"],
             },
             "page_count": result_payload["meta"]["page_count"],
