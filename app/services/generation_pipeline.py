@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import dataclasses
 import os
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
+from generators.critic.critic_model import CriticResult
 from generators.quiz.quiz_model import Quiz
 from generators.story.story_model import Story
 
 from app.schemas.story import StoryCreateRequest
 
 if TYPE_CHECKING:
+    from generators.critic.critic_generator import CriticGenerator
     from generators.illustration.illustration_pipeline import IllustrationGenerator
     from generators.quiz.quiz_generator import QuizGenerator
     from generators.story.story_generator import StoryGenerator
@@ -27,6 +30,19 @@ class StoryPipelineRequest:
     theme: str = ""
     extra_prompt: str = ""
     include_style_guide: bool = True
+    # Language proficiency labels for the prompt (native/fluent/intermediate/beginner)
+    primary_proficiency: str = "native"
+    secondary_proficiency: str = "beginner"
+    # Cultural and style context
+    cultures: str = ""
+    foreign_terms: str = ""
+    style_preset: str = "vibrant_storybook"
+    page_count: int = 32
+    tone_hint: str = ""
+    # Reader profile modules
+    gender: str | None = None
+    family_situation: str | None = None
+    interest: str | None = None
     story_model: str = "gemini-2.5-flash"
     enable_quiz: bool = False
     quiz_model: str = "gemini-2.5-flash"
@@ -43,6 +59,9 @@ class StoryPipelineRequest:
     illustration_cover_aspect_ratio: str = "5:4"
     illustration_request_interval_sec: float = 1.0
     illustration_skip_existing: bool = True
+    enable_critic: bool = False
+    critic_model: str = "gemini-2.5-flash"
+    critic_max_retries: int = 2
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "include_style_guide", True)
@@ -59,6 +78,7 @@ class StoryPipelineResult:
     tts_result: dict[str, Any] | None
     illustration_result: dict[str, Any] | None
     service_errors: dict[str, str | None]
+    critic_results: list[CriticResult] = dataclasses.field(default_factory=list)
 
 
 def build_pipeline_request_from_story_request(
@@ -88,7 +108,48 @@ def build_pipeline_request_from_story_request(
         illustration_cover_aspect_ratio=request.generation.illustration_cover_aspect_ratio,
         illustration_request_interval_sec=request.generation.illustration_request_interval_sec,
         illustration_skip_existing=request.generation.illustration_skip_existing,
+        enable_critic=True,
     )
+
+
+def _build_generation_params(request: StoryPipelineRequest) -> dict:
+    return {
+        "child_name": request.child_name,
+        "child_age": request.child_age,
+        "primary_lang": request.primary_lang,
+        "secondary_lang": request.secondary_lang,
+        "theme": request.theme,
+        "style_preset": request.style_preset,
+        "page_count": request.page_count,
+        "primary_proficiency": request.primary_proficiency,
+        "secondary_proficiency": request.secondary_proficiency,
+        "cultures": request.cultures,
+        "foreign_terms": request.foreign_terms,
+        "tone_hint": request.tone_hint,
+    }
+
+
+def _build_critic_feedback(critic_result: CriticResult) -> str:
+    actionable = [
+        issue for issue in critic_result.issues if issue.severity in ("blocker", "major")
+    ]
+    lines = ["[CRITIC FEEDBACK — address all of the following in the revised story:]"]
+    for issue in actionable:
+        page_ref = f"Page {issue.page}: " if issue.page is not None else ""
+        lines.append(f"- {page_ref}[{issue.category}] {issue.explanation} → {issue.suggested_fix}")
+    for note in critic_result.global_notes:
+        lines.append(f"- [global] {note}")
+    return "\n".join(lines)
+
+
+def generate_critic(
+    request: StoryPipelineRequest,
+    story: Story,
+) -> CriticResult:
+    from generators.critic.critic_generator import CriticGenerator
+
+    generator = CriticGenerator(model_name=request.critic_model)
+    return generator.evaluate(story=story, generation_params=_build_generation_params(request))
 
 
 def generate_story(request: StoryPipelineRequest) -> tuple[Story, str]:
@@ -105,6 +166,16 @@ def generate_story(request: StoryPipelineRequest) -> tuple[Story, str]:
         secondary_lang=request.secondary_lang,
         theme=request.theme,
         extra_prompt=request.extra_prompt,
+        primary_proficiency=request.primary_proficiency,
+        secondary_proficiency=request.secondary_proficiency,
+        cultures=request.cultures,
+        foreign_terms=request.foreign_terms,
+        style_preset=request.style_preset,
+        page_count=request.page_count,
+        tone_hint=request.tone_hint,
+        gender=request.gender,
+        family_situation=request.family_situation,
+        interest=request.interest,
     )
     return story, generator.model_name
 
@@ -232,6 +303,29 @@ def run_story_generation_pipeline(
     strict_assets: bool,
 ) -> StoryPipelineResult:
     story, story_model = generate_story(request)
+
+    critic_results: list[CriticResult] = []
+    if request.enable_critic:
+        active_request = request
+        for attempt in range(request.critic_max_retries + 1):
+            critic_result = generate_critic(active_request, story)
+            critic_results.append(critic_result)
+            print(
+                f"[critic] attempt={attempt + 1} verdict={critic_result.overall_verdict} "
+                f"issues={len(critic_result.issues)}"
+            )
+            if critic_result.overall_verdict == "ok":
+                break
+            if attempt >= request.critic_max_retries:
+                break
+            feedback = _build_critic_feedback(critic_result)
+            separator = "\n\n" if active_request.extra_prompt else ""
+            active_request = dataclasses.replace(
+                active_request,
+                extra_prompt=active_request.extra_prompt + separator + feedback,
+            )
+            story, story_model = generate_story(active_request)
+
     output_dir = Path(output_dir_factory(story, story_model))
     story_json_path = write_story_json_to_output_dir(output_dir, story, story_model)
 
@@ -301,4 +395,5 @@ def run_story_generation_pipeline(
         tts_result=tts_result,
         illustration_result=illustration_result,
         service_errors=service_errors,
+        critic_results=critic_results,
     )
