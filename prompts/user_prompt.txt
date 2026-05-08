@@ -1,22 +1,66 @@
 Create a heartfelt, read-aloud-friendly bilingual children's story in JSON.
 
-Inputs:
-- Child name: {child_name}
-- Child age (optional): {child_age}
-- Primary language: {primary_lang}
-- Secondary language: {secondary_lang}
-- Theme (optional): {theme}
-- Extra guidance (optional): {extra_prompt}
+## Child Profile (Reader)
+- Name: {child_name}
+- Age: {child_age}
+- Primary language (dominant / most comfortable): {primary_lang}
+- Secondary language (being learned): {secondary_lang}
+- Proficiency in primary language: {primary_proficiency}
+- Proficiency in secondary language: {secondary_proficiency}
 
-Instructions:
-- If the theme is blank, choose a fresh, age-appropriate theme and a clear problem to solve.
-- If the age is blank/unknown, assume age 5.
-- Produce exactly 32 pages.
-- Set `primary_language` and `secondary_language` fields to match the input language names exactly.
-- Keep each page short and engaging for young children.
-- Use both languages on every page.
-- For every page, include a `vocabulary` array with 3 to 5 core word pairs drawn from that page.
-- Each `vocabulary` item must include `primary_word`, `secondary_word`, `primary_definition`, and `secondary_definition`.
-- Keep vocabulary definitions short, concrete, and child-friendly.
+(Supported languages for this project: Korean, English, Chinese, Japanese, Spanish, Vietnamese.
+Proficiency values: native / fluent / intermediate / beginner. If unknown, assume native for primary and beginner for secondary.)
+
+## Cultural Context
+- Cultures present in this story: {cultures}
+  (Both cultures must contribute meaningfully to the resolution.)
+- Foreign-language or cultural terms that should appear and be self-explained in-text on first use: {foreign_terms}
+  (Comma-separated list. Leave blank if none. For each term, the first in-text appearance must include a brief in-line gloss inside the same sentence — vocabulary alone does not satisfy this rule.)
+
+## Illustration Style
+- Style preset: {style_preset}
+  (One of the presets defined in style_guide.txt. If blank, choose a preset whose tone matches the theme — do not blindly default to a high-saturation preset for quiet or reflective stories.)
+
+## Story Theme & Calibration
+- Theme: {theme}
+  (If blank, choose a fresh, age-appropriate theme with a concrete, solvable problem.)
+- Page count: {page_count}
+  (If blank, default 32.)
+- Tone hint: {tone_hint}
+  (Optional, e.g., "warm bedtime", "festive and adventurous", "quiet and reflective".)
+- Additional adaptation notes: {extra_prompt}
+  (Optional free-text notes on language proficiency adaptation or specific learning goals.)
+
+## Adjunct Modules
+The backend assembles the following adjunct modules based on the reader profile and pastes their content here. Each module adds context-specific guidance on top of the universal rules in system_instruction.txt and style_guide.txt. Treat them as authoritative within their scope (e.g., a Korean language module governs Korean writing details).
+
+If a module is empty or absent for a given category, no additional guidance applies for that category.
+
+### Language modules
+- Primary language module: {module_language_primary}
+- Secondary language module: {module_language_secondary}
+
+### Reader profile modules
+- Age band module: {module_age}
+- Gender modules: {module_gender}
+  (Backend concatenates the gender-specific module — boys.txt or girls.txt — together with inclusive.txt and pastes the combined text here. inclusive.txt is always present; if no gender is specified, inclusive.txt alone is pasted.)
+- Family situation module: {module_family}
+- Interests module: {module_interest}
+
+### Culture modules
+- Primary culture module: {module_culture_primary}
+- Secondary culture module: {module_culture_secondary}
+
+(Modules live under prompts/modules/. The backend selects which file to inject based on the reader profile. Operators can add, edit, or remove modules without touching the core prompts.)
+
+## Core Instructions
+- Produce exactly the page count above (default 32), numbered 1..N in order.
+- Set primary_language and secondary_language fields to match the language names above exactly.
+- If age is blank/unknown, assume age 5.
+- Sentence length, vocabulary complexity, and narrative depth MUST match the child's age and the per-language proficiency above. If the language modules above specify per-language thresholds, those govern.
+- Use both languages on every page. Translations must be natural and idiomatic, not word-for-word.
+- For every page, include a vocabulary array with 3–5 word pairs drawn from that page.
+- For each foreign term listed above, ensure its first in-text appearance includes a brief in-line gloss inside the same sentence.
+- Apply the chosen illustration style preset's prefix verbatim as the start of every illustration_prompt (see style_guide.txt for the preset library).
 
 Return ONLY the JSON.

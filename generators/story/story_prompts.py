@@ -51,13 +51,37 @@ class StoryPrompt:
         theme: str,
         extra_prompt: str = "",
         child_age: Optional[int] = None,
+        primary_proficiency: str = "native",
+        secondary_proficiency: str = "beginner",
+        cultures: str = "",
+        foreign_terms: str = "",
+        style_preset: str = "vibrant_storybook",
+        page_count: int = 32,
+        tone_hint: str = "",
+        gender: Optional[str] = None,
+        family_situation: Optional[str] = None,
+        interest: Optional[str] = None,
     ) -> str:
         if self._user_prompt_template is None:
             self._user_prompt_template = self._read_text(
                 self.user_prompt_path, "User prompt"
             )
 
+        from generators.story.module_loader import resolve_modules
+
         child_age_text = "" if child_age is None else str(child_age)
+        cultures_resolved = cultures or f"{primary_lang}, {secondary_lang}"
+        cultures_list = [c.strip() for c in cultures_resolved.split(",") if c.strip()]
+
+        modules = resolve_modules(
+            primary_lang=primary_lang,
+            secondary_lang=secondary_lang,
+            child_age=child_age,
+            cultures=cultures_list,
+            gender=gender,
+            family_situation=family_situation,
+            interest=interest,
+        )
 
         try:
             return self._user_prompt_template.format(
@@ -67,6 +91,14 @@ class StoryPrompt:
                 secondary_lang=secondary_lang,
                 theme="" if theme is None else theme,
                 extra_prompt=extra_prompt,
+                primary_proficiency=primary_proficiency,
+                secondary_proficiency=secondary_proficiency,
+                cultures=cultures_resolved,
+                foreign_terms=foreign_terms,
+                style_preset=style_preset,
+                page_count=page_count,
+                tone_hint=tone_hint,
+                **modules,
             )
         except KeyError as exc:
             raise ValueError(
