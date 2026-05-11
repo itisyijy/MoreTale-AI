@@ -3,38 +3,37 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 QuizQuestionType = Literal["multiple_choice"]
-QuizSkill = Literal[
-    "story_comprehension",
-    "cause_and_effect",
-    "character_emotion",
-    "sequence",
-    "vocabulary_in_context",
-]
+
+# VOCABULARY: tests a word from the story in context
+# STORY: covers comprehension, cause-and-effect, emotion, sequence
+QuizSkill = Literal["VOCABULARY", "STORY"]
+
+_VALID_CHOICE_IDS = {"1", "2", "3", "4"}
 
 
 class QuizChoice(BaseModel):
-    choice_id: str = Field(..., description="Stable choice identifier such as a, b, c, d.")
+    choice_id: str = Field(..., description="Choice identifier: 1, 2, 3, or 4.")
     text: str = Field(..., min_length=1, description="Choice text shown to the child.")
 
     @field_validator("choice_id")
     @classmethod
     def normalize_choice_id(cls, value: str) -> str:
-        normalized = value.strip().lower()
-        if not normalized:
-            raise ValueError("choice_id must not be empty")
+        normalized = value.strip()
+        if normalized not in _VALID_CHOICE_IDS:
+            raise ValueError(f"choice_id must be one of {sorted(_VALID_CHOICE_IDS)}")
         return normalized
 
 
 class QuizAnswer(BaseModel):
-    choice_id: str = Field(..., description="Correct choice identifier.")
+    choice_id: str = Field(..., description="Correct choice identifier (1, 2, 3, or 4).")
     text: str = Field(..., min_length=1, description="Correct choice text.")
 
     @field_validator("choice_id")
     @classmethod
     def normalize_choice_id(cls, value: str) -> str:
-        normalized = value.strip().lower()
-        if not normalized:
-            raise ValueError("choice_id must not be empty")
+        normalized = value.strip()
+        if normalized not in _VALID_CHOICE_IDS:
+            raise ValueError(f"choice_id must be one of {sorted(_VALID_CHOICE_IDS)}")
         return normalized
 
 
@@ -104,10 +103,10 @@ class Quiz(BaseModel):
         vocabulary_questions = [
             question
             for question in self.questions
-            if question.skill == "vocabulary_in_context"
+            if question.skill == "VOCABULARY"
         ]
         if not vocabulary_questions:
-            raise ValueError("quiz must include at least one vocabulary_in_context question")
+            raise ValueError("quiz must include at least one VOCABULARY question")
         if self.question_count == 5 and len(vocabulary_questions) != 1:
-            raise ValueError("5-question quiz must include exactly one vocabulary_in_context question")
+            raise ValueError("5-question quiz must include exactly one VOCABULARY question")
         return self

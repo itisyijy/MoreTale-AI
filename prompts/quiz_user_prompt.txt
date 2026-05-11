@@ -7,14 +7,13 @@ Primary language: {primary_language}
 Secondary language: {secondary_language}
 Question count: {question_count}
 
-Required mix for 5 questions — use each skill exactly once:
-- 1 × story_comprehension
-- 1 × cause_and_effect
-- 1 × character_emotion
-- 1 × sequence
-- 1 × vocabulary_in_context
+Required skill mix for 5 questions — use each category as specified:
+- 1 × VOCABULARY (test one key word in story context)
+- 4 × STORY (cover comprehension, cause-and-effect, character emotion, and sequence — one each)
 
-If question_count is not 5, keep the same intent: cover as many distinct skills as possible, always include exactly one vocabulary_in_context question.
+If question_count is not 5, keep the same intent: always include exactly one VOCABULARY question; distribute remaining questions across STORY sub-topics (comprehension, cause-and-effect, emotion, sequence) without repeating the same sub-topic.
+
+Choice IDs must be "1", "2", "3", "4" — not letters.
 
 Story context:
 {story_context}

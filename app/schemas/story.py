@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
 
 from app.core.config import get_settings
 
@@ -260,3 +262,95 @@ class StoryResultResponse(BaseModel):
     assets: StoryAssetsResponse
     meta: StoryResultMetaResponse
     pages: list[StoryPageResponse]
+
+
+# ---------------------------------------------------------------------------
+# Backend integration schemas
+# ---------------------------------------------------------------------------
+
+class AgeGroup(str, Enum):
+    AGE_0_2 = "AGE_0_2"
+    AGE_3_4 = "AGE_3_4"
+    AGE_5_6 = "AGE_5_6"
+    AGE_7_8 = "AGE_7_8"
+    AGE_9_10 = "AGE_9_10"
+    AGE_10_PLUS = "AGE_10_PLUS"
+
+
+class LanguageProficiency(str, Enum):
+    EGG = "EGG"
+    LARVA = "LARVA"
+    PUPA = "PUPA"
+    BEE = "BEE"
+
+
+class StoryPreference(str, Enum):
+    WARM_HUG = "WARM_HUG"
+    FUN_ADVENTURE = "FUN_ADVENTURE"
+    DAILY_LIFE = "DAILY_LIFE"
+    CUSTOM = "CUSTOM"
+
+
+class Gender(str, Enum):
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+
+
+class FamilyConfiguration(str, Enum):
+    KOREAN_PATERNAL = "MULTICULTURAL_KOREAN_PATERNAL"
+    KOREAN_MATERNAL = "MULTICULTURAL_KOREAN_MATERNAL"
+    DUAL_FOREIGN = "MULTICULTURAL_DUAL_FOREIGN"
+    BLENDED = "MULTICULTURAL_BLENDED"
+    SINGLE_PARENT = "SINGLE_PARENT"
+
+
+class StoryGenerateRequest(BaseModel):
+    """Request schema matching the backend's StoryGenerateRequest (camelCase JSON)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    prompt: str
+    profile_id: int | None = None
+    child_name: str | None = None
+    primary_language: str | None = None
+    secondary_language: str | None = None
+    age_group: AgeGroup | None = None
+    child_age: int | None = None
+    first_language_proficiency: LanguageProficiency | None = None
+    second_language_proficiency: LanguageProficiency | None = None
+    first_language_listening: LanguageProficiency | None = None
+    first_language_speaking: LanguageProficiency | None = None
+    second_language_listening: LanguageProficiency | None = None
+    second_language_speaking: LanguageProficiency | None = None
+    story_preference: StoryPreference | None = None
+    custom_story_preference: str | None = None
+    auto_generated: bool = False
+    recommended_tale_title: str | None = None
+    gender: Gender | None = None
+    family_configuration: FamilyConfiguration | None = None
+    interest: str | None = None
+
+
+class GeneratedSlide(BaseModel):
+    """Single slide in the backend's StoryGenerateResponse."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    order: int
+    image_url: str | None = None
+    text_kr: str
+    text_native: str
+    audio_url_kr: str | None = None
+    audio_url_native: str | None = None
+
+
+class StoryGenerateResponse(BaseModel):
+    """Response schema matching the backend's StoryGenerateResponse (camelCase JSON)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    title: str
+    child_name: str
+    primary_language: str
+    secondary_language: str
+    slides: list[GeneratedSlide]

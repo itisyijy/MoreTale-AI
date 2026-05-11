@@ -43,10 +43,17 @@ class StoryGenerator:
         theme: str,
         extra_prompt: str = "",
         child_age: Optional[int] = None,
+        primary_proficiency: str = "native",
+        secondary_proficiency: str = "beginner",
+        cultures: str = "",
+        foreign_terms: str = "",
+        style_preset: str = "vibrant_storybook",
+        page_count: int = 32,
+        tone_hint: str = "",
+        gender: Optional[str] = None,
+        family_situation: Optional[str] = None,
+        interest: Optional[str] = None,
     ) -> Story:
-        """
-        Generates a bilingual fairy tale using the Gemini API.
-        """
         user_prompt = self.prompts.generate_user_prompt(
             child_name=child_name,
             child_age=child_age,
@@ -54,6 +61,16 @@ class StoryGenerator:
             secondary_lang=secondary_lang,
             theme=theme,
             extra_prompt=extra_prompt,
+            primary_proficiency=primary_proficiency,
+            secondary_proficiency=secondary_proficiency,
+            cultures=cultures,
+            foreign_terms=foreign_terms,
+            style_preset=style_preset,
+            page_count=page_count,
+            tone_hint=tone_hint,
+            gender=gender,
+            family_situation=family_situation,
+            interest=interest,
         )
         
         try:

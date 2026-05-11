@@ -10,6 +10,7 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
 - `POST /api/stories/`: 스토리 생성 작업 시작 (`202`)
 - `GET /api/stories/{story_id}`: 작업 상태 조회
 - `GET /api/stories/{story_id}/result`: 결과 조회
+- `DELETE /api/stories/{story_id}`: 작업 취소
 - `GET /healthz`: 헬스체크
 - `/static/outputs/...`: 로컬 산출물 정적 서빙
 
@@ -22,6 +23,7 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
   - 인메모리 레이트리밋 (`POST /api/stories/`, API key 단위)
   - 모델/언어 allowlist 검증 (퀴즈 모델 포함)
   - 입력 길이 제한
+  - 서버 재시작 시 `running` 상태 Job 자동 복구 (`SERVER_RESTARTED` → `failed`)
 - 스토리 32페이지, 퀴즈 생성 (`generators/quiz`), 뷰어 자동재생/인쇄/퀴즈 UI 추가
 
 ## 프로젝트 구조
@@ -43,7 +45,7 @@ app/
     storage.py               # 저장소 re-export 진입점
     output_paths.py          # 출력 경로 헬퍼
     result_manifests.py      # 산출물 매니페스트
-    job_store.py             # 인메모리 job 상태 저장
+    job_store.py             # 파일 기반 job 상태 저장 (meta.json)
     rate_limiter.py          # API key 단위 레이트리밋
     request_context.py       # X-Request-ID 컨텍스트
 
@@ -87,7 +89,7 @@ NANO_BANANA_KEY=YOUR_ILLUSTRATION_API_KEY
 # Phase 3-Lite 하드닝
 MORETALE_RATE_LIMIT_POST_STORIES_PER_MIN=5
 MORETALE_THEME_MAX_LEN=120
-MORETALE_EXTRA_PROMPT_MAX_LEN=500
+MORETALE_EXTRA_PROMPT_MAX_LEN=2000
 MORETALE_CHILD_NAME_MAX_LEN=40
 MORETALE_ALLOWED_STORY_MODELS=gemini-2.5-flash
 MORETALE_ALLOWED_QUIZ_MODELS=gemini-2.5-flash
@@ -170,6 +172,7 @@ curl -H "X-API-Key: key-a" \
   - `202`: 비동기 생성 시작
   - `200`: 조회 성공
   - `401`: API key 인증 실패
+  - `404`: story_id 없음 (`STORY_NOT_FOUND`)
   - `409`: 결과 준비 전 상태 (`STORY_NOT_READY`)
   - `422`: 입력 검증 실패 (`VALIDATION_ERROR`)
   - `429`: 레이트리밋 초과 (`RATE_LIMIT_EXCEEDED`)
@@ -180,6 +183,7 @@ curl -H "X-API-Key: key-a" \
 python -m unittest tests.test_fastapi_phase1 -v
 python -m unittest tests.test_fastapi_phase2 -v
 python -m unittest tests.test_fastapi_phase3_hardening -v
+python -m unittest tests.test_fastapi_phase4_cancel -v
 ```
 
 전체 테스트:
@@ -193,3 +197,4 @@ python -m unittest discover -s tests -v
 - CLI 사용 가이드: `cli/README.md`
 - 생성기 모듈 구조: `generators/README.md`
 - FastAPI 구현 계획서: `docs/fastapi-ai-server-impl-plan.md`
+- 백엔드 연동 가이드: `docs/backend-integration-guide.md`
