@@ -40,6 +40,16 @@ def _default_asset_summary(
     }
 
 
+def default_critic_summary(enabled: bool = False) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "attempts": 0,
+        "final_verdict": None,
+        "issue_count": 0,
+        "results": [],
+    }
+
+
 def _derive_asset_summary_from_statuses(
     statuses: list[AssetStatus],
     enabled: bool,
@@ -231,6 +241,7 @@ def build_story_result_payload(
     cover_aspect_ratio: str,
     job_status: str,
     service_errors: dict[str, str | None] | None = None,
+    critic: dict[str, Any] | None = None,
     static_prefix: str | None = None,
 ) -> dict[str, Any]:
     run_dir = get_run_dir(story_id)
@@ -499,6 +510,7 @@ def build_story_result_payload(
             "cover": cover_summary,
             "has_partial_failures": has_partial_failures,
         },
+        "critic": critic if isinstance(critic, dict) else default_critic_summary(),
         "meta": {
             "title_primary": str(story.get("title_primary", "")),
             "title_secondary": str(story.get("title_secondary", "")),

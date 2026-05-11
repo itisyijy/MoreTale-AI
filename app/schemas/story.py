@@ -34,6 +34,9 @@ class GenerationOptions(BaseModel):
     illustration_cover_aspect_ratio: str = Field(default="5:4")
     illustration_request_interval_sec: float = Field(default=1.0)
     illustration_skip_existing: bool = Field(default=True)
+    enable_critic: bool = Field(default=False)
+    critic_model: str = Field(default="gemini-2.5-flash")
+    critic_max_retries: int = Field(default=2, ge=0, le=5)
 
     @field_validator("story_model")
     @classmethod
@@ -51,6 +54,15 @@ class GenerationOptions(BaseModel):
         allowed = get_settings().allowed_quiz_models
         if normalized not in allowed:
             raise ValueError(f"quiz_model must be one of {list(allowed)}")
+        return normalized
+
+    @field_validator("critic_model")
+    @classmethod
+    def validate_critic_model(cls, value: str) -> str:
+        normalized = value.strip()
+        allowed = get_settings().allowed_critic_models
+        if normalized not in allowed:
+            raise ValueError(f"critic_model must be one of {list(allowed)}")
         return normalized
 
     @field_validator("tts_model")
@@ -252,11 +264,20 @@ class StoryAssetsResponse(BaseModel):
     has_partial_failures: bool
 
 
+class StoryCriticSummaryResponse(BaseModel):
+    enabled: bool = False
+    attempts: int = 0
+    final_verdict: str | None = None
+    issue_count: int = 0
+    results: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class StoryResultResponse(BaseModel):
     id: str
     status: JobStatus
     story_json_url: str | None = None
     quiz_json_url: str | None = None
     assets: StoryAssetsResponse
+    critic: StoryCriticSummaryResponse = Field(default_factory=StoryCriticSummaryResponse)
     meta: StoryResultMetaResponse
     pages: list[StoryPageResponse]

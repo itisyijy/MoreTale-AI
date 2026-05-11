@@ -24,7 +24,7 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
   - 모델/언어 allowlist 검증 (퀴즈 모델 포함)
   - 입력 길이 제한
   - 서버 재시작 시 `running` 상태 Job 자동 복구 (`SERVER_RESTARTED` → `failed`)
-- 스토리 32페이지, 퀴즈 생성 (`generators/quiz`), 뷰어 자동재생/인쇄/퀴즈 UI 추가
+- 스토리 32페이지, 선택형 critic 품질 루프, 퀴즈 생성 (`generators/quiz`), 뷰어 자동재생/인쇄/퀴즈 UI 추가
 
 ## 프로젝트 구조
 
@@ -39,7 +39,7 @@ app/
   schemas/
     story.py
   services/
-    generation_pipeline.py   # 공유 생성 파이프라인 (story → quiz → tts → illustration)
+  generation_pipeline.py   # 공유 생성 파이프라인 (story → quiz → tts → illustration)
     story_orchestrator.py    # 비동기 job 실행 및 상태 관리
     story_result_builder.py  # 결과 응답 조립
     storage.py               # 저장소 re-export 진입점
@@ -51,6 +51,7 @@ app/
 
 generators/
   story/                     # 동화 생성 (Gemini)
+  critic/                    # 동화 품질 평가 및 재생성 피드백 (Gemini)
   quiz/                      # 퀴즈 생성 (Gemini)
   tts/                       # TTS 생성 (Gemini TTS)
   illustration/              # 일러스트 생성 (Nano Banana)
@@ -92,6 +93,7 @@ MORETALE_THEME_MAX_LEN=120
 MORETALE_EXTRA_PROMPT_MAX_LEN=2000
 MORETALE_CHILD_NAME_MAX_LEN=40
 MORETALE_ALLOWED_STORY_MODELS=gemini-2.5-flash
+MORETALE_ALLOWED_CRITIC_MODELS=gemini-2.5-flash
 MORETALE_ALLOWED_QUIZ_MODELS=gemini-2.5-flash
 MORETALE_ALLOWED_TTS_MODELS=gemini-2.5-flash-preview-tts
 MORETALE_ALLOWED_ILLUSTRATION_MODELS=gemini-2.5-flash-image
@@ -124,6 +126,9 @@ curl -X POST http://127.0.0.1:8000/api/stories/ \
       "enable_quiz": true,
       "quiz_model": "gemini-2.5-flash",
       "quiz_question_count": 5,
+      "enable_critic": true,
+      "critic_model": "gemini-2.5-flash",
+      "critic_max_retries": 2,
       "enable_tts": true,
       "enable_illustration": true,
       "enable_cover_illustration": true,
@@ -151,6 +156,8 @@ curl -H "X-API-Key: key-a" \
 
 - 스토리 생성 시 `prompts/style_guide.txt`는 항상 시스템 프롬프트에 포함됩니다.
 - 요청의 `include_style_guide` 필드는 하위호환용으로만 유지되며, 값과 무관하게 스타일 가이드는 적용됩니다.
+- `generation.enable_critic=true`이면 스토리 생성 후 critic agent가 품질을 평가하고, `revise` 판정 시 최대 `critic_max_retries`회까지 스토리를 재생성합니다. critic 실행 실패는 해당 생성 작업 실패로 처리됩니다.
+- 결과 응답에는 `critic.enabled`, `critic.attempts`, `critic.final_verdict`, `critic.issue_count`, `critic.results`가 포함됩니다. critic 비활성화 시 `attempts=0`, `final_verdict=null`, `results=[]`입니다.
 - Gemini/Google SDK 기반 생성기는 실제 생성 작업 시점에 lazy import됩니다. `/healthz`, 상태 조회, 결과 조회는 생성기 SDK 로드 없이 동작해야 합니다.
 
 - 표준 에러 포맷:

@@ -108,7 +108,9 @@ def build_pipeline_request_from_story_request(
         illustration_cover_aspect_ratio=request.generation.illustration_cover_aspect_ratio,
         illustration_request_interval_sec=request.generation.illustration_request_interval_sec,
         illustration_skip_existing=request.generation.illustration_skip_existing,
-        enable_critic=True,
+        enable_critic=request.generation.enable_critic,
+        critic_model=request.generation.critic_model,
+        critic_max_retries=request.generation.critic_max_retries,
     )
 
 
@@ -166,16 +168,6 @@ def generate_story(request: StoryPipelineRequest) -> tuple[Story, str]:
         secondary_lang=request.secondary_lang,
         theme=request.theme,
         extra_prompt=request.extra_prompt,
-        primary_proficiency=request.primary_proficiency,
-        secondary_proficiency=request.secondary_proficiency,
-        cultures=request.cultures,
-        foreign_terms=request.foreign_terms,
-        style_preset=request.style_preset,
-        page_count=request.page_count,
-        tone_hint=request.tone_hint,
-        gender=request.gender,
-        family_situation=request.family_situation,
-        interest=request.interest,
     )
     return story, generator.model_name
 
