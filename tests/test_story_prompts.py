@@ -20,19 +20,18 @@ class TestStoryPrompt(unittest.TestCase):
 
         self.assertIn("children's book author", system_instruction)
         self.assertIn("CHARACTER NAMING STRATEGY", system_instruction)
-        self.assertIn("ANTAGONIST DESIGN RULE", system_instruction)
-        self.assertIn("PROTAGONIST AGENCY RULE", system_instruction)
-        self.assertIn("CLIMAX PACING RULE", system_instruction)
+        self.assertIn("Narrative integrity principles", system_instruction)
+        self.assertIn("HONEST EMOTIONAL ARC", system_instruction)
+        self.assertIn("Narrative pacing", system_instruction)
         self.assertIn("Mina", user_prompt)
         self.assertIn("Korean", user_prompt)
         self.assertIn("English", user_prompt)
         self.assertIn("Friendship", user_prompt)
         self.assertIn("Include a dragon.", user_prompt)
-        self.assertIn("exactly 32 pages", user_prompt)
-        self.assertIn("`primary_language`", user_prompt)
-        self.assertIn("`secondary_language`", user_prompt)
-        self.assertIn("`vocabulary` array", user_prompt)
-        self.assertIn("`primary_definition`", user_prompt)
+        self.assertIn("Produce exactly the page count above", user_prompt)
+        self.assertIn("primary_language and secondary_language fields", user_prompt)
+        self.assertIn("vocabulary array", user_prompt)
+        self.assertIn("primary_definition", system_instruction)
 
     def test_style_guide_is_applied_even_when_flag_is_false(self):
         prompt = StoryPrompt(include_style_guide=False)
@@ -40,7 +39,7 @@ class TestStoryPrompt(unittest.TestCase):
         system_instruction = prompt.system_instruction
 
         self.assertIn("CHARACTER NAMING STRATEGY", system_instruction)
-        self.assertIn("Pages 1-6: Setup", system_instruction)
+        self.assertIn("Setup establishes the protagonist", system_instruction)
 
     def test_missing_system_instruction_file_raises(self):
         prompt = StoryPrompt(system_instruction_path="prompts/not_exists.txt")

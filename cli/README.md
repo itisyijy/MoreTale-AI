@@ -7,6 +7,7 @@
 CLI는 Gemini API를 사용해 다음을 생성합니다.
 
 - 이중언어 동화 JSON
+- (선택) critic agent 품질 평가 및 최대 2회 재생성
 - (선택) 페이지 단위 TTS 오디오(WAV)
 - (선택) 표지 이미지(`5:4`) + 페이지 단위 일러스트 이미지(`1:1`)
 
@@ -75,7 +76,23 @@ python main.py \
 outputs/{timestamp}_story_{slug}/quiz_{quiz_model}.json
 ```
 
-### 5) 동화 + TTS 생성
+### 5) 동화 + critic 품질 루프
+
+```bash
+python main.py \
+  --child_name "Mina" \
+  --child_age 5 \
+  --primary_lang "Korean" \
+  --secondary_lang "English" \
+  --theme "Friendship" \
+  --enable_critic \
+  --critic_model "gemini-2.5-flash" \
+  --critic_max_retries 2
+```
+
+critic이 `ok`를 반환하면 그대로 저장하고, `revise`를 반환하면 blocker/major issue와 global note를 반영해 최대 `--critic_max_retries`회 다시 생성합니다. critic 실행 실패는 파이프라인 실패로 처리됩니다.
+
+### 6) 동화 + TTS 생성
 
 ```bash
 python main.py \
@@ -97,7 +114,7 @@ outputs/{timestamp}_story_{slug}/audio/02_<secondary-lang-slug>/page_01_secondar
 outputs/{timestamp}_story_{slug}/audio/manifest.json
 ```
 
-### 6) 동화 + 일러스트 일괄 생성
+### 7) 동화 + 일러스트 일괄 생성
 
 ```bash
 python main.py \
@@ -112,7 +129,7 @@ python main.py \
   --illustration_skip_existing
 ```
 
-### 7) 기존 동화 JSON으로 일러스트만 생성
+### 8) 기존 동화 JSON으로 일러스트만 생성
 
 ```bash
 python generators/illustration/illustration_generator.py \
@@ -133,6 +150,12 @@ python generators/illustration/illustration_generator.py \
 - `--include_style_guide` (선택): 하위호환용 no-op 옵션
 - `--model_name` (선택, 기본 `gemini-2.5-flash`): 스토리 모델
 - `--enable_tts` (선택): TTS 생성 활성화
+- `--enable_critic` (선택): critic agent 품질 루프 활성화
+- `--critic_model` (선택, 기본 `gemini-2.5-flash`)
+- `--critic_max_retries` (선택, 기본 `2`): `revise` 판정 시 최대 재생성 횟수
+- `--enable_quiz` (선택): 퀴즈 생성 활성화
+- `--quiz_model` (선택, 기본 `gemini-2.5-flash`)
+- `--quiz_question_count` (선택, 기본 `5`)
 - `--tts_model` (선택, 기본 `gemini-2.5-flash-preview-tts`)
 - `--tts_voice` (선택, 기본 `Achernar`)
 - `--tts_temperature` (선택, 기본 `1.0`)

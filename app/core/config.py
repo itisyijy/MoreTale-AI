@@ -42,6 +42,7 @@ class Settings:
     child_name_max_len: int = 40
     allowed_story_models: tuple[str, ...] = ("gemini-2.5-flash",)
     allowed_quiz_models: tuple[str, ...] = ("gemini-2.5-flash",)
+    allowed_critic_models: tuple[str, ...] = ("gemini-2.5-flash",)
     allowed_tts_models: tuple[str, ...] = ("gemini-2.5-flash-preview-tts",)
     allowed_illustration_models: tuple[str, ...] = ("gemini-2.5-flash-image",)
     allowed_languages: tuple[str, ...] = (
@@ -93,6 +94,10 @@ def get_settings() -> Settings:
         ),
         allowed_quiz_models=_parse_csv_env(
             "MORETALE_ALLOWED_QUIZ_MODELS",
+            default=["gemini-2.5-flash"],
+        ),
+        allowed_critic_models=_parse_csv_env(
+            "MORETALE_ALLOWED_CRITIC_MODELS",
             default=["gemini-2.5-flash"],
         ),
         allowed_tts_models=_parse_csv_env(

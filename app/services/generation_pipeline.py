@@ -108,7 +108,9 @@ def build_pipeline_request_from_story_request(
         illustration_cover_aspect_ratio=request.generation.illustration_cover_aspect_ratio,
         illustration_request_interval_sec=request.generation.illustration_request_interval_sec,
         illustration_skip_existing=request.generation.illustration_skip_existing,
-        enable_critic=True,
+        enable_critic=request.generation.enable_critic,
+        critic_model=request.generation.critic_model,
+        critic_max_retries=request.generation.critic_max_retries,
     )
 
 

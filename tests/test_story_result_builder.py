@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from app.schemas.story import StoryResultResponse
 from app.services.output_paths import get_run_dir, write_story_json
 from app.services.story_result_builder import build_story_result_payload
 from generators.story.story_model import STORY_PAGE_COUNT, Page, Story, VocabularyEntry
@@ -161,6 +162,16 @@ class TestStoryResultBuilder(unittest.TestCase):
         )
         self.assertEqual(payload["assets"]["cover"]["url"], f"/{story_id}/illustrations/cover.png")
         self.assertEqual(payload["assets"]["illustrations"]["aspect_ratio"], "1:1")
+        self.assertEqual(
+            payload["critic"],
+            {
+                "enabled": False,
+                "attempts": 0,
+                "final_verdict": None,
+                "issue_count": 0,
+                "results": [],
+            },
+        )
 
     def test_build_story_result_payload_omits_quiz_url_when_missing(self) -> None:
         story_id = "20260221_160002_story_mina"
@@ -175,10 +186,22 @@ class TestStoryResultBuilder(unittest.TestCase):
             illustration_aspect_ratio="1:1",
             cover_aspect_ratio="5:4",
             job_status="completed",
+            critic={
+                "enabled": True,
+                "attempts": 1,
+                "final_verdict": "ok",
+                "issue_count": 0,
+                "results": [{"overall_verdict": "ok", "issues": [], "global_notes": []}],
+            },
             static_prefix="",
         )
 
         self.assertIsNone(payload["quiz_json_url"])
+        self.assertTrue(payload["critic"]["enabled"])
+        self.assertEqual(payload["critic"]["attempts"], 1)
+        self.assertEqual(payload["critic"]["final_verdict"], "ok")
+        response = StoryResultResponse.model_validate(payload)
+        self.assertTrue(response.critic.enabled)
 
 
 if __name__ == "__main__":

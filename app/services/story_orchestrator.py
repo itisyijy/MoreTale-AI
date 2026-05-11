@@ -31,6 +31,22 @@ from app.services.story_result_builder import build_story_result_payload
 job_store = JobStore()
 
 
+def _build_critic_summary(enabled: bool, critic_results: list[Any] | None = None) -> dict[str, Any]:
+    results = [
+        result.model_dump(mode="json") if hasattr(result, "model_dump") else result
+        for result in (critic_results or [])
+    ]
+    final = results[-1] if results else None
+    issues = final.get("issues", []) if isinstance(final, dict) else []
+    return {
+        "enabled": enabled,
+        "attempts": len(results),
+        "final_verdict": final.get("overall_verdict") if isinstance(final, dict) else None,
+        "issue_count": len(issues) if isinstance(issues, list) else 0,
+        "results": results,
+    }
+
+
 def recover_interrupted_jobs() -> None:
     from app.core.config import get_settings
 
@@ -290,6 +306,8 @@ def load_story_result(story_id: str) -> StoryResultResponse:
         if isinstance(generation, dict)
         else "5:4"
     )
+    result = job.get("result")
+    critic = result.get("critic") if isinstance(result, dict) else None
 
     try:
         payload = build_story_result_payload(
@@ -301,6 +319,7 @@ def load_story_result(story_id: str) -> StoryResultResponse:
             cover_aspect_ratio=cover_aspect_ratio,
             job_status=job_status,
             service_errors=service_errors,
+            critic=critic if isinstance(critic, dict) else None,
         )
     except FileNotFoundError:
         raise HTTPException(
@@ -343,6 +362,7 @@ def run_story_generation_job(
     illustration_result: dict[str, Any] | None = None
     illustration_aspect_ratio = "1:1"
     cover_aspect_ratio = "5:4"
+    critic_summary = _build_critic_summary(enabled=False)
 
     current_job = job_store.load_job(story_id)
     if current_job and current_job.get("status") == "canceled":
@@ -365,10 +385,12 @@ def run_story_generation_job(
             pipeline_request = StoryPipelineRequest(**request_payload["pipeline"])
             illustration_aspect_ratio = pipeline_request.illustration_aspect_ratio
             cover_aspect_ratio = pipeline_request.illustration_cover_aspect_ratio
+            critic_summary = _build_critic_summary(enabled=pipeline_request.enable_critic)
         else:
             _create_request = StoryCreateRequest.model_validate(request_payload)
             illustration_aspect_ratio = _create_request.generation.illustration_aspect_ratio
             cover_aspect_ratio = _create_request.generation.illustration_cover_aspect_ratio
+            critic_summary = _build_critic_summary(enabled=_create_request.generation.enable_critic)
             pipeline_request = build_pipeline_request_from_story_request(_create_request)
         job_store.mark_running(story_id)
         pipeline_result = run_story_generation_pipeline(
@@ -382,6 +404,10 @@ def run_story_generation_job(
         tts_result = pipeline_result.tts_result
         illustration_result = pipeline_result.illustration_result
         service_errors = pipeline_result.service_errors
+        critic_summary = _build_critic_summary(
+            enabled=pipeline_request.enable_critic,
+            critic_results=pipeline_result.critic_results,
+        )
 
         result_payload = build_story_result_payload(
             story_id=story_id,
@@ -392,6 +418,7 @@ def run_story_generation_job(
             cover_aspect_ratio=cover_aspect_ratio,
             job_status="completed",
             service_errors=service_errors,
+            critic=critic_summary,
         )
         result_summary = {
             "story_json_url": to_static_outputs_url(story_json_path),
@@ -402,6 +429,7 @@ def run_story_generation_job(
             },
             "page_count": result_payload["meta"]["page_count"],
             "assets": result_payload["assets"],
+            "critic": critic_summary,
             "raw_service_results": {
                 "quiz": quiz_result.model_dump(mode="json") if quiz_result is not None else None,
                 "tts": tts_result,
@@ -429,6 +457,7 @@ def run_story_generation_job(
                     cover_aspect_ratio=cover_aspect_ratio,
                     job_status="failed",
                     service_errors=service_errors,
+                    critic=critic_summary,
                 )
                 failed_result = {
                     "story_json_url": to_static_outputs_url(story_json_path),
@@ -441,6 +470,7 @@ def run_story_generation_job(
                     },
                     "page_count": failed_payload["meta"]["page_count"],
                     "assets": failed_payload["assets"],
+                    "critic": critic_summary,
                 }
             except Exception:
                 failed_result = None

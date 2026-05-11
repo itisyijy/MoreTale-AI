@@ -7,22 +7,22 @@ def _choice(choice_id: str, text: str) -> QuizChoice:
     return QuizChoice(choice_id=choice_id, text=text)
 
 
-def _question(question_id: str, skill: str = "story_comprehension") -> QuizQuestion:
+def _question(question_id: str, skill: str = "STORY") -> QuizQuestion:
     return QuizQuestion(
         question_id=question_id,
         type="multiple_choice",
         skill=skill,
         question_text=f"Question {question_id}?",
         choices=[
-            _choice("a", "Answer"),
-            _choice("b", "Choice B"),
-            _choice("c", "Choice C"),
-            _choice("d", "Choice D"),
+            _choice("1", "Answer"),
+            _choice("2", "Choice B"),
+            _choice("3", "Choice C"),
+            _choice("4", "Choice D"),
         ],
-        answer=QuizAnswer(choice_id="a", text="Answer"),
+        answer=QuizAnswer(choice_id="1", text="Answer"),
         explanation="Because the story says so.",
         source_page_numbers=[1],
-        source_vocabulary_entry_ids=["festival"] if skill == "vocabulary_in_context" else [],
+        source_vocabulary_entry_ids=["festival"] if skill == "VOCABULARY" else [],
     )
 
 
@@ -37,15 +37,15 @@ class TestQuizModel(unittest.TestCase):
             question_count=5,
             questions=[
                 _question("q1"),
-                _question("q2", "cause_and_effect"),
-                _question("q3", "character_emotion"),
-                _question("q4", "sequence"),
-                _question("q5", "vocabulary_in_context"),
+                _question("q2"),
+                _question("q3"),
+                _question("q4"),
+                _question("q5", "VOCABULARY"),
             ],
         )
 
         self.assertEqual(len(quiz.questions), 5)
-        self.assertEqual(quiz.questions[0].answer.choice_id, "a")
+        self.assertEqual(quiz.questions[0].answer.choice_id, "1")
         self.assertEqual(quiz.questions[0].source_page_numbers, [1])
 
     def test_answer_must_match_choice(self) -> None:
@@ -53,15 +53,15 @@ class TestQuizModel(unittest.TestCase):
             QuizQuestion(
                 question_id="q1",
                 type="multiple_choice",
-                skill="story_comprehension",
+                skill="STORY",
                 question_text="Question?",
                 choices=[
-                    _choice("a", "Answer"),
-                    _choice("b", "Choice B"),
-                    _choice("c", "Choice C"),
-                    _choice("d", "Choice D"),
+                    _choice("1", "Answer"),
+                    _choice("2", "Choice B"),
+                    _choice("3", "Choice C"),
+                    _choice("4", "Choice D"),
                 ],
-                answer=QuizAnswer(choice_id="z", text="Missing"),
+                answer=QuizAnswer(choice_id="1", text="Missing"),
                 explanation="Because.",
                 source_page_numbers=[1],
             )
@@ -88,11 +88,11 @@ class TestQuizModel(unittest.TestCase):
                 secondary_language="English",
                 question_count=5,
                 questions=[
-                    _question("q1", "vocabulary_in_context"),
-                    _question("q2", "vocabulary_in_context"),
-                    _question("q3", "character_emotion"),
-                    _question("q4", "sequence"),
-                    _question("q5", "story_comprehension"),
+                    _question("q1", "VOCABULARY"),
+                    _question("q2", "VOCABULARY"),
+                    _question("q3"),
+                    _question("q4"),
+                    _question("q5"),
                 ],
             )
 

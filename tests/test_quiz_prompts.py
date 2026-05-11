@@ -54,7 +54,8 @@ class TestQuizPrompt(unittest.TestCase):
         self.assertIn("story-1", user_prompt)
         self.assertIn("리아의 특별한 연", user_prompt)
         self.assertIn("festival", user_prompt)
-        self.assertIn("vocabulary_in_context", user_prompt)
+        self.assertIn("VOCABULARY", user_prompt)
+        self.assertIn("STORY", user_prompt)
 
     def test_formats_prompt_without_vocabulary_entries(self) -> None:
         prompt = QuizPrompt()
