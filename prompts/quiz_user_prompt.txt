@@ -9,9 +9,10 @@ Question count: {question_count}
 
 Required skill mix for 5 questions — use each category as specified:
 - 1 × VOCABULARY (test one key word in story context)
-- 4 × STORY (cover comprehension, cause-and-effect, character emotion, and sequence — one each)
+- 3 × STORY (cover three of: comprehension, cause-and-effect, character emotion, sequence — no sub-topic repeated)
+- 1 × REFLECTION (anchor in a specific story moment, ask the reader to apply the embodied value)
 
-If question_count is not 5, keep the same intent: always include exactly one VOCABULARY question; distribute remaining questions across STORY sub-topics (comprehension, cause-and-effect, emotion, sequence) without repeating the same sub-topic.
+If question_count is not 5, keep the same intent: always include exactly one VOCABULARY question and exactly one REFLECTION question; distribute remaining questions across STORY sub-topics (comprehension, cause-and-effect, emotion, sequence) without repeating the same sub-topic.
 
 Choice IDs must be "1", "2", "3", "4" — not letters.
 

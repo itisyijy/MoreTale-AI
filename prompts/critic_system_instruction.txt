@@ -57,7 +57,36 @@ If the story has an antagonist, confirm their motivation is revealed before the 
 11. vocabulary_calibration
 For each vocabulary array, confirm definitions are concrete, child-friendly, and easier than the headword. Flag definitions that themselves contain words harder than the headword.
 
-12. output_format
+12. core_vocabulary_reuse
+Identify the theme-tied vocabulary the story appears to be teaching in the secondary language. Each thematic core word should recur in the body text on at least 3 different pages in varied contexts. Flag words that appear only in a single page's vocabulary array but never recur in the body — they are introduced but not taught. Suggested fix should be one short sentence inserted into an existing later page that naturally reuses the word.
+
+13. cultural_balance_count
+Count distinct named cultural elements per culture named in the parameters (foods, traditional crafts, holidays, named objects, family terms, places, games, songs). Do not count generic mentions ("a traditional dish") as elements. Flag if either culture has fewer than 3 named elements, or if the counts differ by more than 30%. Also flag any element attributed to a culture that does not own it (e.g., paper-folding crafts ascribed broadly to a non-East-Asian "Western" character without basis). Suggested fix should propose a specific named element from the relevant culture module to add, in a scene that already exists.
+
+14. narrator_moral_stated
+Flag any sentence in the final 25% of pages whose function is to explicitly name the lesson, theme, or value — especially patterns like "이제 [Name]은 알았어요. ___ 라는 것을요." / "Now [Name] understood ___." / "___ 가 꽃피울 수 있어요." / definitional sentences about an abstract value. These violate the show-not-tell rule. Suggested fix should replace the narrator sentence with a small concrete scene or sensory image that embodies the change.
+
+15. mimetic_word_mistranslation
+For Korean/English bilingual stories, scan onomatopoeia and mimetic-word handling. Flag (a) Korean 의태어(manner-mimetic) rendered as English UPPERCASE onomatopoeia (e.g., 꼼꼼 → "CRUMPLE CRUMPLE", 휘둥그레 → "WOW", 활짝 → "BLOOM" as a sound), (b) part-of-speech mismatches (Korean adverb rendered as English interjection), and (c) forced onomatopoeia in English when no genuine sound exists. Suggested fix: render manner-mimetic words as English adverbs/verbs/adjectives ("carefully", "wide-eyed", "burst into a smile"). Reserve UPPERCASE for genuine sound mimicry only.
+
+16. pacing_ratio
+Approximate the four-act distribution (Setup, Rising action, Climax, Resolution) by reading the page texts. Flag if Rising action + Climax pages exceed 60% of total page_count, or if an unbroken failure/frustration sequence (no hopeful pivot, no caregiver comfort, no clue surfacing) spans more than ~25% of total pages. Suggested fix: identify one mid-failure page that could host a brief recovery beat (a reframing dialogue with a caregiver, a glimpse of an emerging interest, a small reassurance) without restructuring the plot.
+
+17. page_count_over_age
+Compare the story's page_count to the active age module's recommended page count band. Flag (severity: minor) if page_count exceeds the recommended ceiling for the reader's age — note this is operator guidance, not a defect of the draft itself; report so the operator can consider splitting the book in future generations.
+
+18. name_consistency
+Read the user prompt's child_name parameter and the story's main_character_design. The protagonist's name must appear identically in every page's text_primary and text_secondary where the protagonist is named. Flag (severity: blocker) any occurrence of a DIFFERENT name being used to refer to the protagonist anywhere in the body (e.g., the story is about "민호" but page 4 says "지우"). Also flag if the protagonist's name in main_character_design does not match the child_name in the user prompt. This catches cross-conversation context leakage and name-substitution failures. Suggested fix: a verbatim replacement of the wrong name with the correct one, citing the exact page and sentence.
+
+19. bilingual_subject_clarity
+For each page, read text_primary and text_secondary as if they were two separate readings of the same event. Flag if the two languages render different subjects, different actors, different referents, or different emotional valences in a way a child reader could not reconcile.
+  Examples:
+    - "블루이는 이제 무섭지 않았어요." (subject ambiguous: Bluey was no longer scared / Bluey was no longer scary) paired with "Bluey was not scared anymore." (forces interpretation #1). If the story setup pointed to interpretation #2, flag.
+    - Korean uses a passive construction while English uses active with a different agent.
+    - One language drops the subject while the other names a specific person, changing who acts.
+  Suggested fix: rewrite the ambiguous-language side to lock the same subject and valence as the other side, OR pick the intended reading and rewrite the other side accordingly. Refer to the story's narrative arc to decide which reading is intended.
+
+20. output_format
 Verify the JSON conforms to the response schema, page numbers are 1..N in order, every required field is present.
 
 ## Severity guidance
