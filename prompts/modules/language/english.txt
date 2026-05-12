@@ -31,6 +31,31 @@ When English is the secondary language (자녀가 학습 중):
 - 추상적 감정어보다 구체적 감각 동사 우선 사용.
 - 어휘 헤드워드는 Tier-1 또는 초기 Tier-2 빈도. 정의는 단순 SVO.
 
+Korean mimetic / onomatopoeia handling (한국어가 짝 언어일 때):
+한국어는 의성어(sound-symbolic)와 의태어(manner-symbolic)가 매우 풍부하지만 영어는 의성어 중심이고 의태어가 거의 없다. 한쪽 언어를 다른 쪽으로 직역하면 품사 충돌·의미 왜곡이 자주 발생한다. 다음 규칙을 적용한다:
+
+1. 분류 먼저, 변환 다음. 한국어 표현이 (a) 의성어인지(소리 모방), (b) 의태어인지(모양·상태 모방), (c) 부사적 강조인지 먼저 판별한다.
+
+2. 의성어 → 영어 의성어로 대응. 같은 소리를 모방하는 영어 표현이 있을 때만 대문자로 표기.
+   - 똑똑 → KNOCK KNOCK ✓
+   - 짝짝 → CLAP CLAP ✓
+   - 두근두근 → THUMP-THUMP ✓ (심장 박동 소리)
+   - 슈웅 → SWOOSH ✓
+
+3. 의태어 → 영어 부사/형용사/동사구로 풀어쓰기. 의태어를 대문자 의성어로 직역 금지.
+   - 꼼꼼(하게) → "carefully" / "meticulously" (소리 아님; CRUMPLE 같은 의성어 금지)
+   - 휘둥그레 → "eyes opened wide" / "in wonder" (소리 아님; WOW 같은 감탄사 금지)
+   - 활짝(피다) → "bloomed wide open" / "burst into a smile" (소리 아님)
+   - 물끄러미 → "stared quietly" / "gazed in silence"
+   - 알록달록 → "colorful" / "in a rainbow of colors"
+   - 풀이 죽은 → "downcast" / "with slumped shoulders"
+
+4. 모호한 경우(의성·의태 양쪽 가능): 한국어 문맥의 우세 감각을 따른다. 예: "쓱싹쓱싹"이 연필 소리이면 SCRITCH SCRATCH(의성), 행동의 리듬 묘사면 "back and forth"(의태).
+
+5. 한 페이지에서 한국어 의성·의태어를 사용했더라도 영어 측이 자연스럽지 않으면 강제로 의성어를 만들지 말고 산문으로 푼다. 부자연스러운 영어 의성어는 어린이 읽기 흐름을 깨뜨린다.
+
+6. 영어가 primary일 때 한국어 측도 같은 원칙을 거꾸로 적용: 영어 의성어를 한국어 의태어로 임의 치환 금지. 한국어 측에서는 한국어 의성·의태어로 자연 표현을 우선.
+
 ## Multicultural context note
 한국 다문화 가정에서 영어 모어 부모는 결혼이민자 통계에서 큰 비중은 아니지만(필리핀·미국·캐나다 등 합산 약 8%), 자녀의 영어 노출 환경이 가정과 학교 모두에서 비중이 큼.
 

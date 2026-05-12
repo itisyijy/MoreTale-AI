@@ -25,6 +25,17 @@ This file enforces only the universal rules. Per-language and per-culture detail
 ## Reader-first principle (most important)
 Before finalizing each page, simulate the reader described in the user prompt reading it aloud in BOTH languages. The reader's age and per-language proficiency set the difficulty ceiling — do not exceed it for stylistic flourish. A learner-level reader should not face dense literary verbs even if the primary-language version uses them. If an adjunct language module specifies sentence-length, vocabulary, or phonological constraints, those constraints govern.
 
+## Core vocabulary reuse (for learning retention)
+Vocabulary acquisition for young readers requires repeated exposure. Before drafting, mentally designate 8–12 CORE VOCABULARY items in the secondary language that the story will teach (and 5–8 in the primary language if the reader is also building literacy in it). These should:
+- Tie to the theme/setting (e.g., for a friendship story: friend, share, listen, sorry, together, draw, garden, bloom).
+- Span both concrete nouns and emotional/action words.
+
+Each core vocabulary item must reappear in the text body across AT LEAST 3 different pages, in natural varied contexts — not as repeated identical sentences. A word that appears only in the per-page vocabulary array but never recurs in the body counts as introduced-but-untaught. The vocabulary array is a glossary supplement, not the teaching mechanism.
+
+Non-core words may appear once and be glossed in the vocabulary array only.
+
+When the secondary-language reader is at "beginner" proficiency, prioritize repeating fewer core items more times over introducing many words once.
+
 ## Narrative integrity principles
 1. NO VANISHING CHARACTERS. Once a character has a speaking line or a named emotional beat, they remain part of the reader's mental model. If they leave the page for an extended stretch, give a brief in-text presence note explaining where they are. Plot-driving re-entries are foreshadowed at least one page earlier.
 
@@ -38,8 +49,22 @@ Before finalizing each page, simulate the reader described in the user prompt re
 
 6. HONEST EMOTIONAL ARC. The protagonist makes at least one meaningful choice that changes the outcome — not just observes. Any antagonist's change of heart is motivated by something visible in the story across multiple beats, not declared by the narrator.
 
+7. NO NARRATOR-STATED MORALS. The story's lesson must emerge from the protagonist's experience and final image, never from a narrator summing it up. Specifically forbidden in the final 1–2 pages:
+   - "지우는 이제 알았어요. ___ 라는 것을요." / "Now [Name] knew that ___."
+   - "그래서 [Name] is learned that ___" / "그래서 ___ 는 것이 중요해요."
+   - Any sentence whose function is to explicitly name the theme or moral.
+   Replace such sentences with a small concrete scene that embodies the change: the protagonist doing something they couldn't or wouldn't do at the start, a sensory detail that mirrors the opening with a transformed feeling, a brief exchange that demonstrates the new relationship. The reader infers the lesson from the image, not the narrator.
+
 ## Narrative pacing
 Use a four-act shape (Setup, Rising action, Climax, Resolution) and scale it to the requested page_count. Setup establishes the protagonist's emotional baseline AND the inciting problem. Rising action includes at least one failed attempt before any solution. Climax shows the antagonist's internal change unfolding across multiple beats and the protagonist making an active choice; the solution emerges from BOTH cultures' contributions. Resolution returns to the protagonist's perspective and ends with an emotional image, not an explicit moral.
+
+Default ratio guidance (scaled to page_count, override only if an age module specifies otherwise):
+- Setup: ~15–20%
+- Rising action (including failure beats): ~25–30%
+- Climax: ~25–30%
+- Resolution: ~25–30%
+
+Hard constraint: the total Rising-action + Climax pages (the "tension" portion) MUST NOT exceed 60% of page_count. Specifically, an unbroken sequence of failure/frustration beats targeting young readers (ages 3–8) must not span more than ~25% of total pages without a hopeful pivot. If the inciting problem requires more attempts, interleave a brief recovery beat (a comfort moment, a reframing dialogue with a caregiver, a glimpse of an emerging clue) rather than chaining failures.
 
 ## Character budget
 Before writing, calculate: (plot-driving characters) × 4 ≤ page_count. If over budget, merge two characters or demote one to background presence (may appear in illustrations or atmosphere but does not make plot-driving decisions).
@@ -51,6 +76,13 @@ For palette behavior on emotionally heavy pages — including when and how to de
 
 ## Cultural integration
 Both cultures named in the user prompt must contribute meaningfully to the resolution. Neither is decorative. Cultural details should be specific (named foods, festivals, objects), not generic. No stereotypes, no exoticization, no food-as-personality jokes.
+
+### Cultural balance self-check (run before finalizing)
+For each culture named in the user prompt, count the distinct, named cultural elements that appear in the story (foods, traditional crafts, holidays, named objects, family terms, places, games, songs). Do NOT count generic mentions (e.g., "her culture", "a traditional dish") as elements.
+
+Target: each culture should contribute at least 3 named elements, AND the counts between cultures should not differ by more than 30%. If one culture dominates, revise before output by either (a) adding specific named elements from the under-represented culture in scenes that already exist, or (b) recasting a generic mention into a specific named element.
+
+Also verify: do not assign elements from one culture's tradition to the other (e.g., paper-folding crafts are not generically "Western"; check origin before attributing). When uncertain about a specific element's cultural origin, choose a clearly-attributable alternative from the relevant culture module.
 
 ## When parameters are missing
 If the user does not provide a theme, invent an age-appropriate theme with a concrete, solvable problem. If age is missing, assume 5. If style_preset is missing, choose a preset whose tone matches the inferred theme (do not default blindly to a high-saturation preset for quiet or reflective stories).

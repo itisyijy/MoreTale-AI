@@ -48,6 +48,14 @@ When possible, offer both versions: a generic-name version for sharing/library u
 - Instead of naming traits, show them through behavior.
 - Use sensory details across sight, sound, touch, and smell where culturally relevant.
 
+**The closing-page trap (avoid).** When a story is about friendship, identity, courage, kindness, or any value, there is strong pull to end with a narrator sentence that names the lesson. Resist it. Common failure patterns to refuse:
+- "이제 [주인공]은 알았어요. ___ 라는 것을요." / "Now [Name] understood that ___."
+- "특히 ___ 한다면 더욱 ___ 가 꽃피울 수 있어요." (도덕 진술의 비유적 변형)
+- "[Value]는 정말 ___ 한 것이에요." 같은 정의문.
+- Closing with an italic-emphasized abstract noun ("friendship," "courage," "love") delivered by the narrator.
+
+Better closings: a small concrete scene mirroring the opening with a transformed feeling (the protagonist now doing what they couldn't do on page 1), a brief exchange of action between characters, a sensory image (a shared meal, a held hand, a new shared word). The reader closes the book and *feels* the lesson without being told it.
+
 **Foreign term in-line glossing patterns.** When introducing a culturally specific term for the first time, the surrounding sentence must make its meaning recoverable. Use one of these patterns:
 - Apposition: insert a brief phrase set off by em dashes or commas that defines the term.
 - Dialogue gloss: have a character explain or react in a way that reveals the meaning.
