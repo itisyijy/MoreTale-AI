@@ -282,6 +282,7 @@ def run_tts_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
                 "language": item.language,
                 "audioUrl": to_static_outputs_url(file_path),
                 "duration": 0,
+                "message": "TTS generation completed",
             }
         )
 
@@ -290,6 +291,7 @@ def run_tts_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
         "audioUrl": items[0]["audioUrl"] if len(items) == 1 else None,
         "language": items[0]["language"] if len(items) == 1 else None,
         "duration": items[0]["duration"] if len(items) == 1 else None,
+        "message": items[0]["message"] if len(items) == 1 else "TTS batch generation completed",
     }
 
 
@@ -312,9 +314,24 @@ def run_quiz_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]
     quiz_path = run_dir / f"quiz_{generator.model_name}.json"
     quiz_path.write_text(quiz.model_dump_json(indent=4), encoding="utf-8")
     return {
-        **quiz.model_dump(mode="json"),
+        **_camelize(quiz.model_dump(mode="json")),
         "quizJsonUrl": to_static_outputs_url(quiz_path),
     }
+
+
+def _camelize(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_camelize(item) for item in value]
+    if isinstance(value, dict):
+        return {_to_camel_key(str(key)): _camelize(item) for key, item in value.items()}
+    return value
+
+
+def _to_camel_key(value: str) -> str:
+    parts = value.split("_")
+    if not parts:
+        return value
+    return parts[0] + "".join(part[:1].upper() + part[1:] for part in parts[1:])
 
 
 def _load_story_json_from_url(url: str) -> dict[str, Any]:
