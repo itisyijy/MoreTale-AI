@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from app.api.internal_ai import router as internal_ai_router
 from app.api.stories import router as stories_router
 from app.core.auth import build_error
 from app.core.config import get_settings
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
         name="outputs",
     )
     application.include_router(stories_router)
+    application.include_router(internal_ai_router)
 
     @application.middleware("http")
     async def request_context_middleware(
