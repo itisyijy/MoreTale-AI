@@ -5,7 +5,16 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
-from app.schemas.story import StoryError, StoryGenerateRequest
+from app.core.languages import normalize_story_language_code
+from app.schemas.story import (
+    AgeGroup,
+    FamilyConfiguration,
+    FamilyStructure,
+    Gender,
+    LanguageProficiency,
+    StoryError,
+    StoryPreference,
+)
 
 InternalJobType = Literal["story", "tts", "quiz", "vocab"]
 
@@ -66,8 +75,38 @@ class CallbackJobRequest(CamelModel):
         return normalized
 
 
-class StoryInternalJobRequest(CallbackJobRequest, StoryGenerateRequest):
+class StoryInternalJobRequest(CallbackJobRequest):
     """Async story request matching backend StoryGenerateRequest plus callbackUrl."""
+
+    prompt: str
+    profile_id: int | None = None
+    child_name: str | None = None
+    primary_language: str | None = None
+    secondary_language: str | None = None
+    age_group: AgeGroup | None = None
+    child_age: int | None = None
+    first_language_proficiency: LanguageProficiency | None = None
+    second_language_proficiency: LanguageProficiency | None = None
+    first_language_listening: LanguageProficiency | None = None
+    first_language_speaking: LanguageProficiency | None = None
+    second_language_listening: LanguageProficiency | None = None
+    second_language_speaking: LanguageProficiency | None = None
+    story_preference: StoryPreference | None = None
+    custom_story_preference: str | None = None
+    auto_generated: bool = False
+    recommended_tale_title: str | None = None
+    family_structure: FamilyStructure | None = None
+    custom_family_structure: str | None = None
+    child_nationality: str | None = None
+    parent_country: str | None = None
+    gender: Gender | None = None
+    family_configuration: FamilyConfiguration | None = None
+    interest: str | None = None
+
+    @field_validator("primary_language", "secondary_language")
+    @classmethod
+    def normalize_language_code(cls, value: str | None) -> str | None:
+        return normalize_story_language_code(value)
 
 
 class TTSInput(CamelModel):

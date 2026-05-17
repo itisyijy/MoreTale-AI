@@ -87,14 +87,6 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertEqual(payload["slides"][0]["textNative"], "hello")
 
     def test_story_response_language_codes_are_lowercase_iso(self) -> None:
-        request = StoryGenerateRequest.model_validate(
-            {
-                "prompt": "friendship",
-                "childName": "Mina",
-                "primaryLanguage": "KO",
-                "secondaryLanguage": "EN",
-            }
-        )
         story = Story(
             title_primary="제목",
             title_secondary="Title",
@@ -114,13 +106,23 @@ class TestBackendIntegrationContract(unittest.TestCase):
             ],
         )
 
-        payload = map_story_to_generate_response(story, request).model_dump(
-            mode="json",
-            by_alias=True,
-        )
+        for language_input in ("KO", "ko", "Korean"):
+            with self.subTest(language_input=language_input):
+                request = StoryGenerateRequest.model_validate(
+                    {
+                        "prompt": "friendship",
+                        "childName": "Mina",
+                        "primaryLanguage": language_input,
+                        "secondaryLanguage": "EN",
+                    }
+                )
+                payload = map_story_to_generate_response(story, request).model_dump(
+                    mode="json",
+                    by_alias=True,
+                )
 
-        self.assertEqual(payload["primaryLanguage"], "ko")
-        self.assertEqual(payload["secondaryLanguage"], "en")
+                self.assertEqual(payload["primaryLanguage"], "ko")
+                self.assertEqual(payload["secondaryLanguage"], "en")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.core.languages import resolve_language_name, to_story_iso
 from app.schemas.story import (
     AgeGroup,
     FamilyConfiguration,
@@ -13,17 +14,6 @@ from app.schemas.story import (
 )
 from app.services.generation_pipeline import StoryPipelineRequest
 from generators.story.story_model import Story
-
-_ISO_TO_LANGUAGE: dict[str, str] = {
-    "ko": "Korean",
-    "en": "English",
-    "ja": "Japanese",
-    "zh": "Chinese",
-    "es": "Spanish",
-    "vi": "Vietnamese",
-    "fr": "French",
-    "de": "German",
-}
 
 _AGE_GROUP_TO_INT: dict[AgeGroup, int] = {
     AgeGroup.AGE_0_2: 1,
@@ -148,13 +138,6 @@ _PREFERENCE_ATMOSPHERE: dict[StoryPreference, str] = {
 }
 
 
-def _resolve_language(code: str | None) -> str:
-    if not code:
-        return "Korean"
-    return _ISO_TO_LANGUAGE.get(code.lower(), code)
-
-
-
 def _build_extra_prompt(req: StoryGenerateRequest) -> str:
     """
     Builds the extra_prompt field for detailed skill-level writing guidance.
@@ -163,8 +146,8 @@ def _build_extra_prompt(req: StoryGenerateRequest) -> str:
     """
     sections: list[str] = []
 
-    primary_name = _resolve_language(req.primary_language)
-    secondary_name = _resolve_language(req.secondary_language)
+    primary_name = resolve_language_name(req.primary_language)
+    secondary_name = resolve_language_name(req.secondary_language)
 
     # Per-skill listening/speaking guidance (supplements the level label)
     skill_lines: list[str] = []
@@ -205,24 +188,6 @@ def _build_extra_prompt(req: StoryGenerateRequest) -> str:
         sections.append("[Profile context]\n" + "\n".join(f"  {l}" for l in profile_lines))
 
     return "\n\n".join(sections)
-
-
-_LANGUAGE_NAME_TO_ISO: dict[str, str] = {
-    language.lower(): iso for iso, language in _ISO_TO_LANGUAGE.items()
-}
-
-
-def _to_iso(lang: str | None) -> str | None:
-    """Return ISO code for a language name or pass through if already ISO."""
-    if not lang:
-        return None
-    normalized = lang.strip()
-    lower = normalized.lower()
-    # Already ISO
-    if lower in _ISO_TO_LANGUAGE:
-        return lower
-    # Full name → ISO
-    return _LANGUAGE_NAME_TO_ISO.get(lower, normalized)
 
 
 def _build_theme(req: StoryGenerateRequest) -> str:
@@ -286,8 +251,8 @@ def map_generate_request_to_pipeline(
         _AGE_GROUP_TO_INT.get(req.age_group) if req.age_group else None
     )
 
-    primary_name = _resolve_language(req.primary_language)
-    secondary_name = _resolve_language(req.secondary_language)
+    primary_name = resolve_language_name(req.primary_language)
+    secondary_name = resolve_language_name(req.secondary_language)
 
     primary_proficiency = (
         _PROFICIENCY_TO_LABEL.get(req.first_language_proficiency, "native")
@@ -352,8 +317,8 @@ def map_story_to_generate_response(
     ]
 
     # Always return lowercase ISO codes — backend Swagger examples use ko/vi/en.
-    primary_iso = _to_iso(req.primary_language) or _to_iso(story.primary_language)
-    secondary_iso = _to_iso(req.secondary_language) or _to_iso(story.secondary_language)
+    primary_iso = to_story_iso(req.primary_language) or to_story_iso(story.primary_language)
+    secondary_iso = to_story_iso(req.secondary_language) or to_story_iso(story.secondary_language)
 
     return StoryGenerateResponse(
         title=story.title_primary,

@@ -44,31 +44,33 @@ class FakeTTSGenerator:
 
 class TestInternalAITTSContract(unittest.TestCase):
     def test_tts_job_accepts_backend_style_and_returns_duration(self) -> None:
-        FakeTTSGenerator.prompts = []
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            env = {
-                "MORETALE_OUTPUTS_DIR": tmp_dir,
-                "GEMINI_TTS_API_KEY": "test-tts-key",
-            }
-            with patch.dict(os.environ, env, clear=False), patch(
-                "generators.tts.tts_generator.TTSGenerator",
-                FakeTTSGenerator,
-            ):
-                result = run_tts_job(
-                    job_id="job-1",
-                    request_payload={
-                        "callbackUrl": "https://backend.test/internal/ai/callback",
-                        "text": "hello",
-                        "language": "KO-kr",
-                        "style": "neutral",
-                    },
-                )
+        for index, language_input in enumerate(("KO-kr", "ko-KR"), start=1):
+            with self.subTest(language_input=language_input):
+                FakeTTSGenerator.prompts = []
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    env = {
+                        "MORETALE_OUTPUTS_DIR": tmp_dir,
+                        "GEMINI_TTS_API_KEY": "test-tts-key",
+                    }
+                    with patch.dict(os.environ, env, clear=False), patch(
+                        "generators.tts.tts_generator.TTSGenerator",
+                        FakeTTSGenerator,
+                    ):
+                        result = run_tts_job(
+                            job_id=f"job-{index}",
+                            request_payload={
+                                "callbackUrl": "https://backend.test/internal/ai/callback",
+                                "text": "hello",
+                                "language": language_input,
+                                "style": "neutral",
+                            },
+                        )
 
-        self.assertEqual(result["language"], "ko-KR")
-        self.assertEqual(result["duration"], 2)
-        self.assertIn("/static/outputs/job-1/tts/tts_001.wav", result["audioUrl"])
-        self.assertEqual(len(FakeTTSGenerator.prompts), 1)
-        self.assertIn("Voice style: neutral.", FakeTTSGenerator.prompts[0])
+                self.assertEqual(result["language"], "ko-KR")
+                self.assertEqual(result["duration"], 2)
+                self.assertIn(f"/static/outputs/job-{index}/tts/tts_001.wav", result["audioUrl"])
+                self.assertEqual(len(FakeTTSGenerator.prompts), 1)
+                self.assertIn("Voice style: neutral.", FakeTTSGenerator.prompts[0])
 
 
 if __name__ == "__main__":

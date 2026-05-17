@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
+from app.core.languages import coerce_allowed_language, normalize_story_language_code
 from app.core.config import get_settings
 
 JobStatus = Literal["queued", "running", "completed", "failed", "canceled"]
@@ -137,23 +138,11 @@ class StoryCreateRequest(BaseModel):
     @field_validator("primary_lang", "secondary_lang")
     @classmethod
     def validate_language(cls, value: str) -> str:
-        _ISO_TO_LANGUAGE: dict[str, str] = {
-            "ko": "Korean",
-            "en": "English",
-            "ja": "Japanese",
-            "zh": "Chinese",
-            "es": "Spanish",
-            "vi": "Vietnamese",
-            "fr": "French",
-            "de": "German",
-        }
         normalized = value.strip()
         if not normalized:
             raise ValueError("language must not be empty")
-        normalized = _ISO_TO_LANGUAGE.get(normalized.lower(), normalized)
         allowed = get_settings().allowed_languages
-        allowed_map = {item.lower(): item for item in allowed}
-        mapped = allowed_map.get(normalized.lower())
+        mapped = coerce_allowed_language(normalized, allowed)
         if mapped is None:
             raise ValueError(f"language must be one of {list(allowed)}")
         return mapped
@@ -366,12 +355,7 @@ class StoryGenerateRequest(BaseModel):
     @field_validator("primary_language", "secondary_language")
     @classmethod
     def normalize_language_code(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        normalized = value.strip()
-        known_codes = {"ko", "en", "ja", "zh", "es", "vi", "fr", "de"}
-        lower = normalized.lower()
-        return lower if lower in known_codes else normalized
+        return normalize_story_language_code(value)
 
 
 class GeneratedSlide(BaseModel):
