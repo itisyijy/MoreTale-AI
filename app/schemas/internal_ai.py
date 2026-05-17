@@ -74,11 +74,13 @@ class TTSInput(CamelModel):
     text: str = Field(..., min_length=1)
     language: str = Field(..., min_length=1)
     id: str | None = None
+    style: str | None = None
 
 
 class TTSInternalJobRequest(CallbackJobRequest):
     text: str | None = None
     language: str | None = None
+    style: str | None = None
     inputs: list[TTSInput] | None = None
     model: str = "gemini-2.5-flash-preview-tts"
     voice: str = "Achernar"

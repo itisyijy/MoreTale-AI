@@ -205,3 +205,4 @@ python -m unittest discover -s tests -v
 - 생성기 모듈 구조: `generators/README.md`
 - FastAPI 구현 계획서: `docs/fastapi-ai-server-impl-plan.md`
 - 백엔드 연동 가이드: `docs/backend-integration-guide.md`
+- 백엔드 OpenAPI 스냅샷: `docs/moretale-backend-openapi.json`

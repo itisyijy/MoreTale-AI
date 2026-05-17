@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 import time
+import wave
 from typing import Any
 
 import httpx
@@ -33,6 +35,15 @@ from app.services.request_context import get_request_id, log_event
 job_store = JobStore()
 
 _VALID_TYPES: set[str] = {"story", "tts", "quiz", "vocab"}
+
+_TTS_LOCALE_TO_CANONICAL: dict[str, str] = {
+    "ko-kr": "ko-KR",
+    "en-us": "en-US",
+    "ja-jp": "ja-JP",
+    "zh-cn": "zh-CN",
+    "es-es": "es-ES",
+    "vi-vn": "vi-VN",
+}
 
 
 def make_internal_job_id(job_type: InternalJobType, source: str = "") -> str:
@@ -245,8 +256,40 @@ def _tts_inputs_from_request(request: TTSInternalJobRequest) -> list[TTSInput]:
             id="1",
             text=request.text or "",
             language=request.language or "",
+            style=request.style,
         )
     ]
+
+
+def _normalize_tts_language(language: str) -> str:
+    normalized = language.strip()
+    return _TTS_LOCALE_TO_CANONICAL.get(normalized.lower(), normalized)
+
+
+def _build_styled_tts_prompt(
+    generator: Any,
+    *,
+    language: str,
+    text: str,
+    style: str | None,
+) -> str:
+    prompt = generator._build_prompt(language_name=language, text=text)
+    normalized_style = (style or "").strip()
+    if normalized_style:
+        return f"{prompt}\nVoice style: {normalized_style}."
+    return prompt
+
+
+def _wav_duration_seconds(file_path: os.PathLike[str] | str) -> int:
+    try:
+        with wave.open(str(file_path), "rb") as audio:
+            frame_count = audio.getnframes()
+            frame_rate = audio.getframerate()
+    except (EOFError, OSError, wave.Error):
+        return 0
+    if frame_count <= 0 or frame_rate <= 0:
+        return 0
+    return max(1, math.ceil(frame_count / frame_rate))
 
 
 def run_tts_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
@@ -268,7 +311,13 @@ def run_tts_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
 
     items: list[dict[str, Any]] = []
     for index, item in enumerate(_tts_inputs_from_request(request), start=1):
-        prompt = generator._build_prompt(language_name=item.language, text=item.text)
+        language = _normalize_tts_language(item.language)
+        prompt = _build_styled_tts_prompt(
+            generator,
+            language=language,
+            text=item.text,
+            style=item.style or request.style,
+        )
         contents = generator._build_contents(prompt)
         audio_bytes, mime_type = generator._stream_audio_bytes(
             contents=contents,
@@ -276,12 +325,13 @@ def run_tts_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
         )
         file_path = output_dir / f"tts_{index:03d}.wav"
         generator._save_audio_file(str(file_path), audio_bytes, mime_type)
+        duration = _wav_duration_seconds(file_path)
         items.append(
             {
                 "id": item.id or str(index),
-                "language": item.language,
+                "language": language,
                 "audioUrl": to_static_outputs_url(file_path),
-                "duration": 0,
+                "duration": duration,
                 "message": "TTS generation completed",
             }
         )

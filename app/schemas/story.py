@@ -325,6 +325,14 @@ class FamilyConfiguration(str, Enum):
     SINGLE_PARENT = "SINGLE_PARENT"
 
 
+class FamilyStructure(str, Enum):
+    ONE_PARENT = "ONE_PARENT"
+    TWO_PARENTS = "TWO_PARENTS"
+    EXTENDED_FAMILY = "EXTENDED_FAMILY"
+    SECRET = "SECRET"
+    CUSTOM = "CUSTOM"
+
+
 class StoryGenerateRequest(BaseModel):
     """Request schema matching the backend's StoryGenerateRequest (camelCase JSON)."""
 
@@ -347,9 +355,23 @@ class StoryGenerateRequest(BaseModel):
     custom_story_preference: str | None = None
     auto_generated: bool = False
     recommended_tale_title: str | None = None
+    family_structure: FamilyStructure | None = None
+    custom_family_structure: str | None = None
+    child_nationality: str | None = None
+    parent_country: str | None = None
     gender: Gender | None = None
     family_configuration: FamilyConfiguration | None = None
     interest: str | None = None
+
+    @field_validator("primary_language", "secondary_language")
+    @classmethod
+    def normalize_language_code(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        known_codes = {"ko", "en", "ja", "zh", "es", "vi", "fr", "de"}
+        lower = normalized.lower()
+        return lower if lower in known_codes else normalized
 
 
 class GeneratedSlide(BaseModel):

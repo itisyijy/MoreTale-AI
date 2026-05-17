@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.schemas.story import (
     AgeGroup,
     FamilyConfiguration,
+    FamilyStructure,
     Gender,
     GeneratedSlide,
     LanguageProficiency,
@@ -98,12 +99,23 @@ _PROFICIENCY_TO_LABEL: dict[LanguageProficiency, str] = {
     LanguageProficiency.BEE: "fluent",
 }
 
-_FAMILY_TO_MODULE: dict[FamilyConfiguration, str] = {
+_LEGACY_FAMILY_TO_MODULE: dict[FamilyConfiguration, str] = {
     FamilyConfiguration.KOREAN_PATERNAL: "multicultural_korean_paternal",
     FamilyConfiguration.KOREAN_MATERNAL: "multicultural_korean_maternal",
     FamilyConfiguration.DUAL_FOREIGN: "multicultural_dual_foreign",
     FamilyConfiguration.BLENDED: "multicultural_blended",
     FamilyConfiguration.SINGLE_PARENT: "single_parent",
+}
+
+_FAMILY_STRUCTURE_TO_MODULE: dict[FamilyStructure, str] = {
+    FamilyStructure.ONE_PARENT: "single_parent",
+}
+
+_FAMILY_STRUCTURE_LABELS: dict[FamilyStructure, str] = {
+    FamilyStructure.ONE_PARENT: "one-parent family",
+    FamilyStructure.TWO_PARENTS: "two-parent family",
+    FamilyStructure.EXTENDED_FAMILY: "extended family",
+    FamilyStructure.SECRET: "family structure not disclosed",
 }
 
 _PREFERENCE_TO_TONE: dict[StoryPreference, str] = {
@@ -188,22 +200,29 @@ def _build_extra_prompt(req: StoryGenerateRequest) -> str:
             f"to the child's age group. Incorporate elements from both cultures naturally."
         )
 
+    profile_lines = _build_profile_context_lines(req)
+    if profile_lines:
+        sections.append("[Profile context]\n" + "\n".join(f"  {l}" for l in profile_lines))
+
     return "\n\n".join(sections)
 
 
-_LANGUAGE_TO_ISO: dict[str, str] = {v: k for k, v in _ISO_TO_LANGUAGE.items()}
+_LANGUAGE_NAME_TO_ISO: dict[str, str] = {
+    language.lower(): iso for iso, language in _ISO_TO_LANGUAGE.items()
+}
 
 
 def _to_iso(lang: str | None) -> str | None:
     """Return ISO code for a language name or pass through if already ISO."""
     if not lang:
         return None
-    lower = lang.lower()
+    normalized = lang.strip()
+    lower = normalized.lower()
     # Already ISO
     if lower in _ISO_TO_LANGUAGE:
         return lower
     # Full name → ISO
-    return _LANGUAGE_TO_ISO.get(lang, lang)
+    return _LANGUAGE_NAME_TO_ISO.get(lower, normalized)
 
 
 def _build_theme(req: StoryGenerateRequest) -> str:
@@ -230,6 +249,32 @@ def _build_theme(req: StoryGenerateRequest) -> str:
         parts.append(f"Topic / theme: {req.prompt}")
 
     return "\n".join(parts)
+
+
+def _build_profile_context_lines(req: StoryGenerateRequest) -> list[str]:
+    lines: list[str] = []
+    if req.family_structure == FamilyStructure.CUSTOM and req.custom_family_structure:
+        lines.append(f"Family structure: {req.custom_family_structure}.")
+    elif req.family_structure:
+        label = _FAMILY_STRUCTURE_LABELS.get(req.family_structure)
+        if label:
+            lines.append(f"Family structure: {label}.")
+    elif req.family_configuration:
+        lines.append(f"Family configuration: {req.family_configuration.value}.")
+
+    if req.child_nationality:
+        lines.append(f"Child nationality: {req.child_nationality}.")
+    if req.parent_country:
+        lines.append(f"Parent country: {req.parent_country}.")
+    return lines
+
+
+def _resolve_family_situation(req: StoryGenerateRequest) -> str | None:
+    if req.family_structure:
+        return _FAMILY_STRUCTURE_TO_MODULE.get(req.family_structure)
+    if req.family_configuration:
+        return _LEGACY_FAMILY_TO_MODULE.get(req.family_configuration)
+    return None
 
 
 def map_generate_request_to_pipeline(
@@ -264,7 +309,7 @@ def map_generate_request_to_pipeline(
         else "female" if req.gender == Gender.FEMALE
         else None
     )
-    family_situation = _FAMILY_TO_MODULE.get(req.family_configuration) if req.family_configuration else None
+    family_situation = _resolve_family_situation(req)
 
     return StoryPipelineRequest(
         child_name=req.child_name or "주인공",
@@ -306,9 +351,9 @@ def map_story_to_generate_response(
         for page in story.pages
     ]
 
-    # Always return ISO codes — backend expects them in the response
-    primary_iso = req.primary_language or _to_iso(story.primary_language)
-    secondary_iso = req.secondary_language or _to_iso(story.secondary_language)
+    # Always return lowercase ISO codes — backend Swagger examples use ko/vi/en.
+    primary_iso = _to_iso(req.primary_language) or _to_iso(story.primary_language)
+    secondary_iso = _to_iso(req.secondary_language) or _to_iso(story.secondary_language)
 
     return StoryGenerateResponse(
         title=story.title_primary,
