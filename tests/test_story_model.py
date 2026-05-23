@@ -1,5 +1,7 @@
 import unittest
 
+from pydantic import ValidationError
+
 from generators.story.story_model import STORY_PAGE_COUNT, Page, Story, VocabularyEntry
 
 
@@ -28,28 +30,24 @@ class TestStoryValidation(unittest.TestCase):
         )
         self.assertEqual(len(story.pages), STORY_PAGE_COUNT)
 
-    def test_invalid_page_count_low(self):
+    def test_shorter_age_adjusted_story_creation(self):
         pages = [
             self.valid_page.model_copy(update={"page_number": i + 1})
-            for i in range(STORY_PAGE_COUNT - 1)
+            for i in range(8)
         ]
 
-        with self.assertRaises(ValueError) as context:
-            Story(
-                title_primary="Test Title",
-                title_secondary="Test Title 2",
-                author_name="AI",
-                primary_language="Korean",
-                secondary_language="English",
-                image_style="Watercolor",
-                main_character_design="Boy",
-                pages=pages,
-            )
-
-        self.assertIn(
-            f"Story must have exactly {STORY_PAGE_COUNT} pages",
-            str(context.exception),
+        story = Story(
+            title_primary="Test Title",
+            title_secondary="Test Title 2",
+            author_name="AI",
+            primary_language="Korean",
+            secondary_language="English",
+            image_style="Watercolor",
+            main_character_design="Boy",
+            pages=pages,
         )
+
+        self.assertEqual(len(story.pages), 8)
 
     def test_invalid_page_count_high(self):
         pages = [
@@ -57,6 +55,26 @@ class TestStoryValidation(unittest.TestCase):
             for i in range(STORY_PAGE_COUNT + 1)
         ]
 
+        with self.assertRaises(ValidationError) as context:
+            Story(
+                title_primary="Test Title",
+                title_secondary="Test Title 2",
+                author_name="AI",
+                primary_language="Korean",
+                secondary_language="English",
+                image_style="Watercolor",
+                main_character_design="Boy",
+                pages=pages,
+            )
+
+        self.assertIn("at most 32 items", str(context.exception))
+
+    def test_invalid_page_sequence(self):
+        pages = [
+            self.valid_page.model_copy(update={"page_number": 1}),
+            self.valid_page.model_copy(update={"page_number": 3}),
+        ]
+
         with self.assertRaises(ValueError) as context:
             Story(
                 title_primary="Test Title",
@@ -69,10 +87,7 @@ class TestStoryValidation(unittest.TestCase):
                 pages=pages,
             )
 
-        self.assertIn(
-            f"Story must have exactly {STORY_PAGE_COUNT} pages",
-            str(context.exception),
-        )
+        self.assertIn("numbered sequentially", str(context.exception))
 
     def test_page_accepts_bilingual_vocabulary_entries(self):
         page = self.valid_page.model_copy(

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import math
 import os
 import re
 import wave
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -20,6 +22,8 @@ from app.schemas.internal_ai import (
 )
 from app.services.generation_pipeline import run_story_generation_pipeline
 from app.services.output_paths import get_run_dir, to_static_outputs_url
+from generators.story.story_model import Story
+from generators.tts.tts_text import slugify_language_name
 
 
 def run_story_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
@@ -29,14 +33,81 @@ def run_story_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any
     )
 
     request = StoryInternalJobRequest.model_validate(request_payload)
-    pipeline_request = map_generate_request_to_pipeline(request)
+    pipeline_request = dataclasses.replace(
+        map_generate_request_to_pipeline(request),
+        enable_tts=True,
+        enable_illustration=True,
+        enable_cover_illustration=True,
+    )
     pipeline_result = run_story_generation_pipeline(
         request=pipeline_request,
         output_dir_factory=lambda _story, _story_model: get_run_dir(job_id),
-        strict_assets=False,
+        strict_assets=True,
     )
-    response = map_story_to_generate_response(pipeline_result.story, request)
+    response = map_story_to_generate_response(
+        pipeline_result.story,
+        request,
+        page_assets=_build_story_generate_asset_urls(
+            run_dir=pipeline_result.output_dir,
+            story=pipeline_result.story,
+            primary_language=pipeline_request.primary_lang,
+            secondary_language=pipeline_request.secondary_lang,
+        ),
+    )
     return response.model_dump(mode="json", by_alias=True)
+
+
+def _build_story_generate_asset_urls(
+    *,
+    run_dir: Path,
+    story: Story,
+    primary_language: str,
+    secondary_language: str,
+) -> dict[int, dict[str, str | None]]:
+    primary_slug = slugify_language_name(primary_language)
+    secondary_slug = slugify_language_name(secondary_language)
+    page_assets: dict[int, dict[str, str | None]] = {}
+
+    for page in story.pages:
+        page_number = page.page_number
+        image_path = _find_first_file(
+            run_dir / "illustrations",
+            f"page_{page_number:02d}.*",
+        )
+        primary_audio_path = (
+            run_dir
+            / "audio"
+            / f"01_{primary_slug}"
+            / f"page_{page_number:02d}_primary.wav"
+        )
+        secondary_audio_path = (
+            run_dir
+            / "audio"
+            / f"02_{secondary_slug}"
+            / f"page_{page_number:02d}_secondary.wav"
+        )
+        page_assets[page_number] = {
+            "image_url": _static_url_if_file(image_path),
+            "audio_url_kr": _static_url_if_file(primary_audio_path),
+            "audio_url_native": _static_url_if_file(secondary_audio_path),
+        }
+
+    return page_assets
+
+
+def _find_first_file(directory: Path, pattern: str) -> Path | None:
+    if not directory.is_dir():
+        return None
+    for candidate in sorted(directory.glob(pattern)):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _static_url_if_file(path: Path | None) -> str | None:
+    if path is None or not path.is_file():
+        return None
+    return to_static_outputs_url(path)
 
 
 def _tts_inputs_from_request(request: TTSInternalJobRequest) -> list[TTSInput]:

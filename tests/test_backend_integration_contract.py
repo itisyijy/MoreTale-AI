@@ -42,7 +42,34 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertEqual(pipeline.child_age, 5)
         self.assertEqual(pipeline.primary_lang, "Korean")
         self.assertEqual(pipeline.secondary_lang, "Vietnamese")
+        self.assertEqual(pipeline.page_count, 16)
         self.assertIn("흥부와 놀부", pipeline.extra_prompt)
+
+    def test_backend_story_page_count_is_internal_age_policy(self) -> None:
+        cases = [
+            ("AGE_0_2", 8),
+            ("AGE_3_4", 12),
+            ("AGE_5_6", 16),
+            ("AGE_7_8", 24),
+            ("AGE_9_10", 32),
+            ("AGE_10_PLUS", 32),
+        ]
+
+        for age_group, expected_page_count in cases:
+            with self.subTest(age_group=age_group):
+                request = StoryGenerateRequest.model_validate(
+                    {
+                        "prompt": "friendship",
+                        "childName": "Mina",
+                        "primaryLanguage": "ko",
+                        "secondaryLanguage": "en",
+                        "ageGroup": age_group,
+                    }
+                )
+
+                pipeline = map_generate_request_to_pipeline(request)
+
+                self.assertEqual(pipeline.page_count, expected_page_count)
 
     def test_story_request_accepts_optional_profile_context_from_story_init(self) -> None:
         request = StoryGenerateRequest.model_validate(
@@ -123,6 +150,41 @@ class TestBackendIntegrationContract(unittest.TestCase):
 
                 self.assertEqual(payload["primaryLanguage"], "ko")
                 self.assertEqual(payload["secondaryLanguage"], "en")
+
+    def test_story_response_slide_order_is_zero_based_for_backend(self) -> None:
+        story = Story(
+            title_primary="제목",
+            title_secondary="Title",
+            author_name="Mina",
+            primary_language="Korean",
+            secondary_language="English",
+            image_style="storybook",
+            main_character_design="child",
+            pages=[
+                Page(
+                    page_number=index,
+                    text_primary=f"문장 {index}",
+                    text_secondary=f"Sentence {index}",
+                    illustration_prompt=f"Scene {index}",
+                )
+                for index in range(1, 4)
+            ],
+        )
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "friendship",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "en",
+            }
+        )
+
+        payload = map_story_to_generate_response(story, request).model_dump(
+            mode="json",
+            by_alias=True,
+        )
+
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
 
 
 if __name__ == "__main__":

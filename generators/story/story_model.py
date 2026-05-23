@@ -3,6 +3,42 @@ from typing import List
 from pydantic import BaseModel, Field, field_validator
 
 STORY_PAGE_COUNT = 32
+STORY_MIN_PAGE_COUNT = 1
+STORY_MAX_PAGE_COUNT = 32
+
+
+class GeneratedVocabularyEntry(BaseModel):
+    entry_id: str | None = None
+    primary_word: str
+    secondary_word: str
+    primary_definition: str
+    secondary_definition: str
+
+
+class GeneratedPage(BaseModel):
+    page_number: int
+    text_primary: str
+    text_secondary: str
+    illustration_prompt: str
+    vocabulary: List[GeneratedVocabularyEntry] = []
+
+
+class GeneratedStory(BaseModel):
+    """Minimal Gemini response schema.
+
+    The fully validated Story model below has descriptions, bounds, and
+    application-populated fields. Passing that rich schema directly to Gemini can
+    exceed the serving schema state limit, especially for long page arrays.
+    """
+
+    title_primary: str
+    title_secondary: str
+    author_name: str
+    primary_language: str
+    secondary_language: str
+    image_style: str
+    main_character_design: str
+    pages: List[GeneratedPage]
 
 
 class VocabularyEntry(BaseModel):
@@ -32,7 +68,11 @@ class VocabularyEntry(BaseModel):
 
 
 class Page(BaseModel):
-    page_number: int = Field(..., description=f"Page number from 1 to {STORY_PAGE_COUNT}")
+    page_number: int = Field(
+        ...,
+        ge=1,
+        description=f"Page number from 1 to {STORY_MAX_PAGE_COUNT}",
+    )
     text_primary: str = Field(
         ..., description="Story text in the primary language (Child's context)"
     )
@@ -106,13 +146,20 @@ class Story(BaseModel):
 
     pages: List[Page] = Field(
         ...,
-        description=f"List of exactly {STORY_PAGE_COUNT} pages",
+        min_length=STORY_MIN_PAGE_COUNT,
+        max_length=STORY_MAX_PAGE_COUNT,
+        description=(
+            f"List of {STORY_MIN_PAGE_COUNT} to {STORY_MAX_PAGE_COUNT} pages. "
+            f"The default long-form story length is {STORY_PAGE_COUNT} pages."
+        ),
     )
 
     @field_validator("pages")
-    def check_page_count(cls, value):
-        if len(value) != STORY_PAGE_COUNT:
+    def check_page_sequence(cls, value):
+        expected = list(range(1, len(value) + 1))
+        actual = [page.page_number for page in value]
+        if actual != expected:
             raise ValueError(
-                f"Story must have exactly {STORY_PAGE_COUNT} pages, but got {len(value)}"
+                f"Story pages must be numbered sequentially from 1 to {len(value)}"
             )
         return value

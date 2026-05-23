@@ -4,6 +4,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
+
 
 def _parse_int_env(name: str, default: int) -> int:
     raw = (os.getenv(name) or "").strip()
@@ -62,7 +68,7 @@ class Settings:
 
 
 def get_settings() -> Settings:
-    project_root = Path(__file__).resolve().parents[2]
+    project_root = PROJECT_ROOT
     outputs_override = (os.getenv("MORETALE_OUTPUTS_DIR") or "").strip()
     outputs_dir = (
         Path(outputs_override).resolve() if outputs_override else project_root / "outputs"

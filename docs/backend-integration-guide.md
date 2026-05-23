@@ -80,11 +80,11 @@ Response envelope: `ApiResponseStoryGenerateResponse`
     "slides": [
       {
         "order": 0,
-        "imageUrl": null,
+        "imageUrl": "/static/outputs/{aiJobId}/illustrations/page_01.png",
         "textKr": "...",
         "textNative": "...",
-        "audioUrlKr": null,
-        "audioUrlNative": null
+        "audioUrlKr": "/static/outputs/{aiJobId}/audio/01_korean/page_01_primary.wav",
+        "audioUrlNative": "/static/outputs/{aiJobId}/audio/02_vietnamese/page_01_secondary.wav"
       }
     ]
   },
@@ -136,40 +136,61 @@ Swagger의 `TTSRequest`는 `text`, `language`, `style`을 받는다. AI internal
 | `GET /internal/ai/jobs/{jobId}` | internal job status |
 | `GET /internal/ai/{type}/jobs/{jobId}/result` | internal job result |
 
-## Contract Gap
+## Story Generation Direction
 
-중요한 차이는 `POST /api/stories/generate` 응답 방식이다.
+백엔드와 AI 서버의 story generation 연동은 **비동기 internal job**을 기준으로 한다.
+콘텐츠 생성은 스토리 텍스트만 생성해도 오래 걸릴 수 있고, 이미지/TTS까지 포함하면 수 분 이상 걸리므로
+백엔드가 AI에 동기 응답을 기대하지 않는다.
 
-Backend Swagger:
+Backend side:
 
-- `200 OK`
-- `ApiResponseStoryGenerateResponse`
-- 생성된 story data를 즉시 반환
+- 사용자가 생성 요청을 하면 backend 자체 job을 만든다.
+- backend는 `POST /internal/ai/story/jobs`로 AI job을 생성한다.
+- AI webhook 또는 backend polling으로 완료 상태를 반영한다.
+- 완료 후 `GET /internal/ai/story/jobs/{jobId}/result`에서 `StoryGenerateResponse` 형태의 결과를 가져온다.
+- story job 성공 결과에는 텍스트, 페이지 이미지 URL, 양쪽 언어 TTS URL이 함께 포함된다.
 
-AI 서버 현재 구현:
+AI side:
 
-- `202 Accepted`
-- `{ id, statusUrl, resultUrl }`
-- 긴 생성 작업을 job으로 처리
+- `POST /internal/ai/story/jobs`: `202 Accepted` + `{ jobId, statusUrl, resultUrl, callbackUrl }`
+- `GET /internal/ai/jobs/{jobId}`: job status
+- `GET /internal/ai/story/jobs/{jobId}/result`: completed/failed result
+- `callbackUrl`로 완료/실패 webhook 전송
+- 내부 story job은 TTS와 illustration을 항상 함께 생성한다.
+- TTS 또는 illustration 중 하나라도 실패하면 partial success로 완료하지 않고 전체 AI job을 failed 처리한다. Backend는 같은 요청을 새 job으로 재시도한다.
 
-AI 파이프라인은 이미지/TTS 포함 시 수 분 이상 걸릴 수 있으므로 backend가 Swagger 계약을 유지하려면 텍스트 생성만 동기로 호출하고 이미지/TTS는 별도 job으로 분리하는 방식이 가장 무난하다. 전체 생성물을 한 번에 만들려면 backend Swagger도 비동기 job 계약으로 바꾸는 결정을 해야 한다.
+기존 `POST /api/stories/generate`는 하위 호환용 public-style async endpoint로 유지하지만,
+backend-to-AI 연동의 기준 endpoint는 `/internal/ai/story/jobs`다.
 
 ## Recommended Flow
 
-현재 Swagger를 최대한 유지하는 흐름:
+비동기 backend job 흐름:
 
 1. Frontend가 `POST /api/stories/generate`를 backend에 호출한다.
-2. Backend가 AI에 텍스트 story 생성만 요청한다.
-3. Backend가 `StoryGenerateResponse`를 `ApiResponse` envelope로 감싸 frontend에 반환한다.
-4. 사용자가 저장하면 frontend가 `POST /api/stories`를 호출한다.
-5. Backend가 필요한 시점에 TTS/image 생성 job을 AI에 요청하고, 완료된 URL을 DB에 반영한다.
+2. Backend가 backend-side story generation job을 만들고 frontend에 job id/status API를 반환한다.
+3. Backend가 `POST /internal/ai/story/jobs`로 AI job을 만든다.
+4. AI가 생성 완료/실패 시 `callbackUrl`로 webhook을 보낸다.
+5. Backend가 `GET /internal/ai/story/jobs/{jobId}/result`로 결과를 가져와 DB에 저장/반영한다.
+6. Frontend는 backend job status를 polling하거나, 추후 SSE/WebSocket으로 상태를 받는다.
 
-장기적으로 전체 생성 작업을 backend job으로 관리하려면:
+## Page Count and Slide Order
 
-1. Backend에 story generation job 테이블/상태 API를 둔다.
-2. Backend가 `POST /internal/ai/story/jobs`로 AI job을 만든다.
-3. AI가 `callbackUrl`로 완료/실패 webhook을 보낸다.
-4. Backend가 `GET /internal/ai/story/jobs/{jobId}/result`로 결과를 가져와 저장한다.
+Story page count는 backend 입력값으로 받지 않는다. AI가 reader profile을 기준으로 내부 정책에 따라 정한다.
+
+현재 backend `ageGroup` 기준:
+
+| ageGroup | pageCount |
+|---|---:|
+| `AGE_0_2` | 8 |
+| `AGE_3_4` | 12 |
+| `AGE_5_6` | 16 |
+| `AGE_7_8` | 24 |
+| `AGE_9_10` | 32 |
+| `AGE_10_PLUS` | 32 |
+
+`ageGroup`이 없으면 `childAge`로 같은 bucket을 계산하고, 둘 다 없으면 age 5 기준인 16 pages를 사용한다.
+
+AI 내부 `Story.pages[].page_number`는 generation/model layer에서 1-based를 유지한다. Backend contract로 반환하는 `slides[].order`는 DB 저장 기준에 맞춰 **0-based**로 변환한다.
 
 ## Environment Variables
 
@@ -198,7 +219,10 @@ MORETALE_GCS_KEY_PREFIX=
 - [x] Swagger profile context 일부를 AI optional 입력으로 수용
 - [x] story 언어 코드를 lowercase ISO로 정규화
 - [x] TTS `style` 입력과 실제 `duration` 응답 보강
-- [ ] Backend가 AI를 동기 텍스트 생성으로 호출할지, 비동기 job으로 호출할지 결정
-- [ ] Story slide `order` 0-based/1-based 기준 합의
+- [x] Backend가 AI를 비동기 internal job으로 호출하는 방향으로 결정
+- [x] Story slide `order`는 backend contract에서 0-based로 결정
+- [x] Backend-to-AI story job은 text + image + TTS bundle 생성으로 결정
+- [x] Story bundle asset 실패 시 전체 AI job failed 처리로 결정
+- [x] Story page count는 backend 입력 없이 AI 내부 age policy로 결정
 - [ ] 결정된 방식에 맞춰 backend env/config 추가
 - [ ] 실제 staging JWT/API key로 end-to-end 호출 검증

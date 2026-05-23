@@ -1,7 +1,10 @@
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+
+from generators.story.story_model import Page, Story
 
 try:
     from tests.asgi_test_client import ASGITestClient as TestClient
@@ -172,6 +175,95 @@ class TestInternalAIAsyncAPI(unittest.TestCase):
         result_body = result_response.json()
         self.assertEqual(result_body["status"], "failed")
         self.assertEqual(result_body["error"]["code"], "AI_JOB_FAILED")
+
+
+class TestInternalAIStoryRunner(unittest.TestCase):
+    def test_story_job_generates_bundle_strictly_and_returns_asset_urls(self) -> None:
+        from app.services.internal_ai_runners import run_story_job
+
+        with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(
+            os.environ,
+            {"MORETALE_OUTPUTS_DIR": tmp_dir},
+            clear=False,
+        ):
+            story = Story(
+                title_primary="제목",
+                title_secondary="Title",
+                author_name="Mina",
+                primary_language="Korean",
+                secondary_language="English",
+                image_style="storybook",
+                main_character_design="child",
+                pages=[
+                    Page(
+                        page_number=index,
+                        text_primary=f"문장 {index}",
+                        text_secondary=f"Sentence {index}",
+                        illustration_prompt=f"Scene {index}",
+                    )
+                    for index in range(1, 3)
+                ],
+            )
+            captured = {}
+
+            def fake_pipeline(request, output_dir_factory, strict_assets):
+                captured["request"] = request
+                captured["strict_assets"] = strict_assets
+                output_dir = output_dir_factory(story, request.story_model)
+                (output_dir / "illustrations").mkdir(parents=True, exist_ok=True)
+                (output_dir / "audio" / "01_korean").mkdir(parents=True, exist_ok=True)
+                (output_dir / "audio" / "02_english").mkdir(parents=True, exist_ok=True)
+                for page_number in range(1, 3):
+                    (output_dir / "illustrations" / f"page_{page_number:02d}.png").write_bytes(
+                        b"image"
+                    )
+                    (
+                        output_dir
+                        / "audio"
+                        / "01_korean"
+                        / f"page_{page_number:02d}_primary.wav"
+                    ).write_bytes(b"RIFF")
+                    (
+                        output_dir
+                        / "audio"
+                        / "02_english"
+                        / f"page_{page_number:02d}_secondary.wav"
+                    ).write_bytes(b"RIFF")
+                return SimpleNamespace(story=story, output_dir=output_dir)
+
+            with patch(
+                "app.services.internal_ai_runners.run_story_generation_pipeline",
+                side_effect=fake_pipeline,
+            ):
+                payload = run_story_job(
+                    "story-job-1",
+                    {
+                        "callbackUrl": "https://backend.test/internal/ai/callback",
+                        "prompt": "friendship",
+                        "childName": "Mina",
+                        "primaryLanguage": "ko",
+                        "secondaryLanguage": "en",
+                    },
+                )
+
+        pipeline_request = captured["request"]
+        self.assertTrue(pipeline_request.enable_tts)
+        self.assertTrue(pipeline_request.enable_illustration)
+        self.assertTrue(pipeline_request.enable_cover_illustration)
+        self.assertTrue(captured["strict_assets"])
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1])
+        self.assertEqual(
+            payload["slides"][0]["imageUrl"],
+            "/static/outputs/story-job-1/illustrations/page_01.png",
+        )
+        self.assertEqual(
+            payload["slides"][0]["audioUrlKr"],
+            "/static/outputs/story-job-1/audio/01_korean/page_01_primary.wav",
+        )
+        self.assertEqual(
+            payload["slides"][0]["audioUrlNative"],
+            "/static/outputs/story-job-1/audio/02_english/page_01_secondary.wav",
+        )
 
 
 if __name__ == "__main__":

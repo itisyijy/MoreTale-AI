@@ -15,6 +15,8 @@ from app.schemas.story import (
 from app.services.generation_pipeline import StoryPipelineRequest
 from generators.story.story_model import Story
 
+PageAssetUrlMap = dict[int, dict[str, str | None]]
+
 _AGE_GROUP_TO_INT: dict[AgeGroup, int] = {
     AgeGroup.AGE_0_2: 1,
     AgeGroup.AGE_3_4: 3,
@@ -22,6 +24,15 @@ _AGE_GROUP_TO_INT: dict[AgeGroup, int] = {
     AgeGroup.AGE_7_8: 7,
     AgeGroup.AGE_9_10: 9,
     AgeGroup.AGE_10_PLUS: 10,
+}
+
+_AGE_GROUP_TO_PAGE_COUNT: dict[AgeGroup, int] = {
+    AgeGroup.AGE_0_2: 8,
+    AgeGroup.AGE_3_4: 12,
+    AgeGroup.AGE_5_6: 16,
+    AgeGroup.AGE_7_8: 24,
+    AgeGroup.AGE_9_10: 32,
+    AgeGroup.AGE_10_PLUS: 32,
 }
 
 # Writing guidance per proficiency level
@@ -242,6 +253,24 @@ def _resolve_family_situation(req: StoryGenerateRequest) -> str | None:
     return None
 
 
+def _resolve_page_count(req: StoryGenerateRequest) -> int:
+    if req.age_group:
+        return _AGE_GROUP_TO_PAGE_COUNT[req.age_group]
+
+    child_age = req.child_age
+    if child_age is None:
+        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_5_6]
+    if child_age <= 2:
+        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_0_2]
+    if child_age <= 4:
+        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_3_4]
+    if child_age <= 6:
+        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_5_6]
+    if child_age <= 8:
+        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_7_8]
+    return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_9_10]
+
+
 def map_generate_request_to_pipeline(
     req: StoryGenerateRequest,
     story_model: str = "gemini-2.5-flash",
@@ -288,7 +317,7 @@ def map_generate_request_to_pipeline(
         cultures=f"{primary_name}, {secondary_name}",
         foreign_terms="",
         style_preset="vibrant_storybook",
-        page_count=32,
+        page_count=_resolve_page_count(req),
         tone_hint=tone_hint,
         gender=gender,
         family_situation=family_situation,
@@ -303,15 +332,17 @@ def map_generate_request_to_pipeline(
 def map_story_to_generate_response(
     story: Story,
     req: StoryGenerateRequest,
+    page_assets: PageAssetUrlMap | None = None,
 ) -> StoryGenerateResponse:
+    page_assets = page_assets or {}
     slides = [
         GeneratedSlide(
-            order=page.page_number,
+            order=page.page_number - 1,
             text_kr=page.text_primary,
             text_native=page.text_secondary,
-            image_url=None,
-            audio_url_kr=None,
-            audio_url_native=None,
+            image_url=page_assets.get(page.page_number, {}).get("image_url"),
+            audio_url_kr=page_assets.get(page.page_number, {}).get("audio_url_kr"),
+            audio_url_native=page_assets.get(page.page_number, {}).get("audio_url_native"),
         )
         for page in story.pages
     ]

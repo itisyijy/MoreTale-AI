@@ -12,7 +12,7 @@ from generators.illustration.illustration_prompt_utils import (
     build_illustration_prefix,
     split_scene_prompt,
 )
-from generators.story.story_model import Story
+from generators.story.story_model import GeneratedStory, Story
 from generators.story.story_prompts import StoryPrompt
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -81,12 +81,12 @@ class StoryGenerator:
                     system_instruction=self.prompts.system_instruction,
                     temperature=1.0, # High creativity
                     response_mime_type="application/json",
-                    response_schema=Story,
+                    response_schema=GeneratedStory,
                 ),
             )
             
             if response.parsed:
-                story = response.parsed
+                story = Story.model_validate(response.parsed.model_dump())
             else:
                 story = Story.model_validate_json(response.text)
 
