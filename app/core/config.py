@@ -24,6 +24,19 @@ def _parse_int_env(name: str, default: int) -> int:
     return value
 
 
+def _parse_float_env(name: str, default: float) -> float:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    if value <= 0:
+        return default
+    return value
+
+
 def _parse_csv_env(name: str, default: list[str]) -> tuple[str, ...]:
     raw = (os.getenv(name) or "").strip()
     if not raw:
@@ -51,6 +64,7 @@ class Settings:
     allowed_critic_models: tuple[str, ...] = ("gemini-2.5-flash",)
     allowed_tts_models: tuple[str, ...] = ("gemini-2.5-flash-preview-tts",)
     allowed_illustration_models: tuple[str, ...] = ("gemini-2.5-flash-image",)
+    healthcheck_timeout_sec: float = 5.0
     allowed_languages: tuple[str, ...] = (
         "Korean",
         "English",
@@ -113,6 +127,10 @@ def get_settings() -> Settings:
         allowed_illustration_models=_parse_csv_env(
             "MORETALE_ALLOWED_ILLUSTRATION_MODELS",
             default=["gemini-2.5-flash-image"],
+        ),
+        healthcheck_timeout_sec=_parse_float_env(
+            "MORETALE_HEALTHCHECK_TIMEOUT_SEC",
+            default=5.0,
         ),
         allowed_languages=_parse_csv_env(
             "MORETALE_ALLOWED_LANGUAGES",

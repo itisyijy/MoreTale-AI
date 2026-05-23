@@ -128,7 +128,8 @@ class TestFastAPIServerPhase3Hardening(unittest.TestCase):
                 )
 
     def test_x_request_id_header_on_success_and_error(self) -> None:
-        success_response = self.client.get("/healthz")
+        with patch("app.main.run_health_checks", return_value=(200, {"status": "ok"})):
+            success_response = self.client.get("/health")
         self.assertEqual(success_response.status_code, 200)
         self.assertTrue(success_response.headers.get("X-Request-ID"))
 

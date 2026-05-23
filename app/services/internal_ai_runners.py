@@ -21,7 +21,8 @@ from app.schemas.internal_ai import (
     VocabInternalJobRequest,
 )
 from app.services.generation_pipeline import run_story_generation_pipeline
-from app.services.output_paths import get_run_dir, to_static_outputs_url
+from app.services.output_paths import get_run_dir
+from app.services.storage_backend import get_storage_backend
 from generators.story.story_model import Story
 from generators.tts.tts_text import slugify_language_name
 
@@ -87,9 +88,9 @@ def _build_story_generate_asset_urls(
             / f"page_{page_number:02d}_secondary.wav"
         )
         page_assets[page_number] = {
-            "image_url": _static_url_if_file(image_path),
-            "audio_url_kr": _static_url_if_file(primary_audio_path),
-            "audio_url_native": _static_url_if_file(secondary_audio_path),
+            "image_url": _upload_if_file(image_path),
+            "audio_url_kr": _upload_if_file(primary_audio_path),
+            "audio_url_native": _upload_if_file(secondary_audio_path),
         }
 
     return page_assets
@@ -104,10 +105,21 @@ def _find_first_file(directory: Path, pattern: str) -> Path | None:
     return None
 
 
-def _static_url_if_file(path: Path | None) -> str | None:
+def _relative_output_path(path: Path) -> str | None:
+    outputs_dir = get_settings().outputs_dir.resolve()
+    try:
+        return path.resolve().relative_to(outputs_dir).as_posix()
+    except Exception:
+        return None
+
+
+def _upload_if_file(path: Path | None) -> str | None:
     if path is None or not path.is_file():
         return None
-    return to_static_outputs_url(path)
+    relative_path = _relative_output_path(path)
+    if relative_path is None:
+        return None
+    return get_storage_backend().upload(path, relative_path)
 
 
 def _tts_inputs_from_request(request: TTSInternalJobRequest) -> list[TTSInput]:
@@ -187,7 +199,7 @@ def run_tts_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
             {
                 "id": item.id or str(index),
                 "language": language,
-                "audioUrl": to_static_outputs_url(file_path),
+                "audioUrl": _upload_if_file(file_path),
                 "duration": duration,
                 "message": "TTS generation completed",
             }
@@ -222,7 +234,7 @@ def run_quiz_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]
     quiz_path.write_text(quiz.model_dump_json(indent=4), encoding="utf-8")
     return {
         **_camelize(quiz.model_dump(mode="json")),
-        "quizJsonUrl": to_static_outputs_url(quiz_path),
+        "quizJsonUrl": _upload_if_file(quiz_path),
     }
 
 

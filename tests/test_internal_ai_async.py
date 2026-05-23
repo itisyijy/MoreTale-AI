@@ -265,6 +265,77 @@ class TestInternalAIStoryRunner(unittest.TestCase):
             "/static/outputs/story-job-1/audio/02_english/page_01_secondary.wav",
         )
 
+    def test_story_job_uploads_assets_to_gcs_when_enabled(self) -> None:
+        from app.services.internal_ai_runners import run_story_job
+
+        with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(
+            os.environ,
+            {
+                "MORETALE_OUTPUTS_DIR": tmp_dir,
+                "MORETALE_STORAGE_BACKEND": "gcs",
+                "MORETALE_GCS_BUCKET": "moretale-assets",
+                "MORETALE_GCS_KEY_PREFIX": "generated",
+            },
+            clear=False,
+        ):
+            story = Story(
+                title_primary="제목",
+                title_secondary="Title",
+                author_name="Mina",
+                primary_language="Korean",
+                secondary_language="English",
+                image_style="storybook",
+                main_character_design="child",
+                pages=[
+                    Page(
+                        page_number=1,
+                        text_primary="문장",
+                        text_secondary="Sentence",
+                        illustration_prompt="Scene",
+                    )
+                ],
+            )
+
+            def fake_pipeline(request, output_dir_factory, strict_assets):
+                output_dir = output_dir_factory(story, request.story_model)
+                (output_dir / "illustrations").mkdir(parents=True, exist_ok=True)
+                (output_dir / "audio" / "01_korean").mkdir(parents=True, exist_ok=True)
+                (output_dir / "audio" / "02_english").mkdir(parents=True, exist_ok=True)
+                (output_dir / "illustrations" / "page_01.png").write_bytes(b"image")
+                (
+                    output_dir / "audio" / "01_korean" / "page_01_primary.wav"
+                ).write_bytes(b"RIFF")
+                (
+                    output_dir / "audio" / "02_english" / "page_01_secondary.wav"
+                ).write_bytes(b"RIFF")
+                return SimpleNamespace(story=story, output_dir=output_dir)
+
+            with patch(
+                "app.services.internal_ai_runners.run_story_generation_pipeline",
+                side_effect=fake_pipeline,
+            ), patch("app.services.storage_backend._build_gcs_client") as client_factory:
+                payload = run_story_job(
+                    "story-job-1",
+                    {
+                        "callbackUrl": "https://backend.test/internal/ai/callback",
+                        "prompt": "friendship",
+                        "childName": "Mina",
+                        "primaryLanguage": "ko",
+                        "secondaryLanguage": "en",
+                    },
+                )
+
+        bucket = client_factory.return_value.bucket.return_value
+        self.assertEqual(bucket.blob.call_count, 3)
+        self.assertEqual(
+            payload["slides"][0]["imageUrl"],
+            "https://storage.googleapis.com/moretale-assets/generated/story-job-1/illustrations/page_01.png",
+        )
+        self.assertEqual(
+            payload["slides"][0]["audioUrlKr"],
+            "https://storage.googleapis.com/moretale-assets/generated/story-job-1/audio/01_korean/page_01_primary.wav",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

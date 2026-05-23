@@ -250,7 +250,7 @@ app/
 ## 11) 구현 단계(현실적인 로드맵)
 
 ### Phase 1 (MVP, 로컬 서빙)
-1. FastAPI 프로젝트 스캐폴딩 + `/healthz`
+1. FastAPI 프로젝트 스캐폴딩 + `/health`
 2. `POST /api/stories/` (story 텍스트만) → `outputs/`에 저장
 3. `GET /api/stories/{id}` / `GET /api/stories/{id}/result`
 4. `outputs/` StaticFiles 마운트 → `story_json_url` 반환

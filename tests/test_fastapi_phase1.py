@@ -100,10 +100,30 @@ class TestFastAPIServerPhase1(unittest.TestCase):
             },
         }
 
-    def test_healthz_returns_200(self) -> None:
-        response = self.client.get("/healthz")
+    def test_health_returns_200(self) -> None:
+        health_payload = {
+            "status": "ok",
+            "service": "moretale-ai",
+            "version": "0.1.0",
+            "checks": {
+                "apiAuth": {"status": "ok"},
+                "outputsDir": {"status": "ok"},
+                "geminiStory": {"status": "ok", "model": "gemini-2.5-flash"},
+                "geminiTts": {
+                    "status": "ok",
+                    "model": "gemini-2.5-flash-preview-tts",
+                },
+                "illustration": {"status": "ok", "model": "gemini-2.5-flash-image"},
+            },
+        }
+        with patch("app.main.run_health_checks", return_value=(200, health_payload)):
+            response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json().get("status"), "ok")
+        self.assertEqual(response.json(), health_payload)
+
+    def test_healthz_is_removed(self) -> None:
+        response = self.client.get("/healthz")
+        self.assertEqual(response.status_code, 404)
 
     def test_post_stories_requires_api_key(self) -> None:
         response = self.client.post("/api/stories/", json=self._build_create_payload())

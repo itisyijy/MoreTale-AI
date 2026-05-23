@@ -11,7 +11,7 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
 - `GET /api/stories/{story_id}`: 작업 상태 조회
 - `GET /api/stories/{story_id}/result`: 결과 조회
 - `DELETE /api/stories/{story_id}`: 작업 취소
-- `GET /healthz`: 헬스체크
+- `GET /health`: 헬스체크 및 필수 의존성 검사
 - `/static/outputs/...`: 로컬 산출물 정적 서빙
 
 ## 현재 구현 상태
@@ -82,6 +82,11 @@ MORETALE_API_KEY=key-a,key-b
 # 선택: outputs 경로
 # MORETALE_OUTPUTS_DIR=/absolute/path/to/outputs
 
+# 선택: 산출물 저장소 (Cloud Run 운영 권장)
+MORETALE_STORAGE_BACKEND=gcs
+MORETALE_GCS_BUCKET=moretale-assets
+MORETALE_GCS_KEY_PREFIX=generated
+
 # 생성기 키
 GEMINI_STORY_API_KEY=YOUR_STORY_API_KEY
 GEMINI_TTS_API_KEY=YOUR_TTS_API_KEY
@@ -98,12 +103,20 @@ MORETALE_ALLOWED_QUIZ_MODELS=gemini-2.5-flash
 MORETALE_ALLOWED_TTS_MODELS=gemini-2.5-flash-preview-tts
 MORETALE_ALLOWED_ILLUSTRATION_MODELS=gemini-2.5-flash-image
 MORETALE_ALLOWED_LANGUAGES=Korean,English,Japanese,Chinese,Spanish,Vietnamese,French,German
+MORETALE_HEALTHCHECK_TIMEOUT_SEC=5
 ```
 
 ### 3) 실행
 
 ```bash
 uvicorn app.main:app --reload
+```
+
+Cloud Run 컨테이너는 Dockerfile의 기본 CMD로 `$PORT`를 사용합니다.
+
+```bash
+docker build -t moretale-ai .
+docker run --rm -p 8080:8080 -e PORT=8080 --env-file .env moretale-ai
 ```
 
 ## API 예시
@@ -158,7 +171,10 @@ curl -H "X-API-Key: key-a" \
 - 요청의 `include_style_guide` 필드는 하위호환용으로만 유지되며, 값과 무관하게 스타일 가이드는 적용됩니다.
 - `generation.enable_critic=true`이면 스토리 생성 후 critic agent가 품질을 평가하고, `revise` 판정 시 최대 `critic_max_retries`회까지 스토리를 재생성합니다. critic 실행 실패는 해당 생성 작업 실패로 처리됩니다.
 - 결과 응답에는 `critic.enabled`, `critic.attempts`, `critic.final_verdict`, `critic.issue_count`, `critic.results`가 포함됩니다. critic 비활성화 시 `attempts=0`, `final_verdict=null`, `results=[]`입니다.
-- Gemini/Google SDK 기반 생성기는 실제 생성 작업 시점에 lazy import됩니다. `/healthz`, 상태 조회, 결과 조회는 생성기 SDK 로드 없이 동작해야 합니다.
+- Gemini/Google SDK 기반 생성기는 실제 생성 작업 시점에 lazy import됩니다. 단, `/health`는 Cloud Run 배포 전 검증을 위해 필수 API key, outputs 쓰기 권한, Gemini 모델 접근성을 실제로 검사합니다.
+- `MORETALE_STORAGE_BACKEND=gcs`일 때 `/health`는 GCS test object 업로드/삭제까지 확인합니다.
+- `/health`의 필수 의존성 검사 실패 시 `503`과 `status: "unhealthy"`를 반환합니다. Secret 값은 응답에 포함하지 않습니다.
+- `MORETALE_STORAGE_BACKEND=gcs`이면 story/TTS/quiz 산출물을 GCS에 업로드하고 `https://storage.googleapis.com/{bucket}/...` URL을 응답합니다. Cloud Run 서비스 계정에는 대상 버킷의 object write 권한이 필요합니다.
 
 - 표준 에러 포맷:
 

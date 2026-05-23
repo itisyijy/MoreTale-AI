@@ -60,9 +60,43 @@ class TestGCSStorageBackend(unittest.TestCase):
             "https://storage.googleapis.com/my-bucket/abc/p01.png",
         )
 
-    def test_upload_raises_not_implemented(self) -> None:
+    def test_upload_uploads_file_and_returns_public_url(self) -> None:
         backend = GCSStorageBackend(bucket="my-bucket")
-        with self.assertRaises(NotImplementedError):
+        with patch("app.services.storage_backend._build_gcs_client") as client_factory:
+            result = backend.upload(Path("/tmp/f.wav"), "abc/f.wav")
+
+        client = client_factory.return_value
+        bucket = client.bucket.return_value
+        blob = bucket.blob.return_value
+        client.bucket.assert_called_once_with("my-bucket")
+        bucket.blob.assert_called_once_with("abc/f.wav")
+        blob.upload_from_filename.assert_called_once_with("/tmp/f.wav")
+        self.assertEqual(result, "https://storage.googleapis.com/my-bucket/abc/f.wav")
+
+    def test_delete_deletes_object(self) -> None:
+        backend = GCSStorageBackend(bucket="my-bucket")
+        with patch("app.services.storage_backend._build_gcs_client") as client_factory:
+            backend.delete("abc/f.wav")
+
+        bucket = client_factory.return_value.bucket.return_value
+        bucket.blob.assert_called_once_with("abc/f.wav")
+        bucket.blob.return_value.delete.assert_called_once()
+
+    def test_upload_uses_key_prefix(self) -> None:
+        backend = GCSStorageBackend(bucket="my-bucket", key_prefix="stories")
+        with patch("app.services.storage_backend._build_gcs_client") as client_factory:
+            result = backend.upload(Path("/tmp/f.wav"), "abc/f.wav")
+
+        bucket = client_factory.return_value.bucket.return_value
+        bucket.blob.assert_called_once_with("stories/abc/f.wav")
+        self.assertEqual(
+            result,
+            "https://storage.googleapis.com/my-bucket/stories/abc/f.wav",
+        )
+
+    def test_upload_requires_bucket(self) -> None:
+        backend = GCSStorageBackend(bucket="")
+        with self.assertRaises(ValueError):
             backend.upload(Path("/tmp/f.wav"), "abc/f.wav")
 
 

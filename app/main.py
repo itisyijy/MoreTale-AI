@@ -22,6 +22,7 @@ from app.services.request_context import (
     reset_request_id,
     set_request_id,
 )
+from app.services.health import run_health_checks
 from app.services.story_orchestrator import recover_interrupted_jobs
 
 
@@ -93,9 +94,10 @@ def create_app() -> FastAPI:
             )
             reset_request_id(token)
 
-    @application.get("/healthz")
-    async def healthz() -> dict[str, str]:
-        return {"status": "ok"}
+    @application.get("/health")
+    async def health() -> JSONResponse:
+        status_code, payload = run_health_checks(get_settings())
+        return JSONResponse(status_code=status_code, content=payload)
 
     @application.exception_handler(HTTPException)
     async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:

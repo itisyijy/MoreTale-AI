@@ -205,10 +205,14 @@ AI side:
 
 ```env
 MORETALE_API_KEY=...
-MORETALE_STORAGE_BACKEND=local
-MORETALE_GCS_BUCKET=
-MORETALE_GCS_KEY_PREFIX=
+MORETALE_STORAGE_BACKEND=gcs
+MORETALE_GCS_BUCKET={asset-bucket}
+MORETALE_GCS_KEY_PREFIX=generated
 ```
+
+`MORETALE_STORAGE_BACKEND=gcs` 운영에서는 AI 서버가 story image/TTS/quiz 산출물을 GCS에 업로드하고,
+Spring에 전달하는 `imageUrl`, `audioUrlKr`, `audioUrlNative`, `quizJsonUrl`은
+`https://storage.googleapis.com/{bucket}/{prefix}/...` 형태의 절대 URL이 된다.
 
 ## Implementation Checklist
 
