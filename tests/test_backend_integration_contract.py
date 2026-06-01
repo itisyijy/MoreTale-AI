@@ -42,17 +42,17 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertEqual(pipeline.child_age, 5)
         self.assertEqual(pipeline.primary_lang, "Korean")
         self.assertEqual(pipeline.secondary_lang, "Vietnamese")
-        self.assertEqual(pipeline.page_count, 16)
+        self.assertEqual(pipeline.page_count, 3)
         self.assertIn("흥부와 놀부", pipeline.extra_prompt)
 
     def test_backend_story_page_count_is_internal_age_policy(self) -> None:
         cases = [
-            ("AGE_0_2", 8),
-            ("AGE_3_4", 12),
-            ("AGE_5_6", 16),
-            ("AGE_7_8", 24),
-            ("AGE_9_10", 32),
-            ("AGE_10_PLUS", 32),
+            ("AGE_0_2", 3),
+            ("AGE_3_4", 3),
+            ("AGE_5_6", 3),
+            ("AGE_7_8", 3),
+            ("AGE_9_10", 3),
+            ("AGE_10_PLUS", 3),
         ]
 
         for age_group, expected_page_count in cases:

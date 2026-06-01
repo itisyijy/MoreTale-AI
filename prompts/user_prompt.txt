@@ -25,7 +25,7 @@ Proficiency values: native / fluent / intermediate / beginner. If unknown, assum
 - Theme: {theme}
   (If blank, choose a fresh, age-appropriate theme with a concrete, solvable problem.)
 - Page count: {page_count}
-  (If blank, default 32.)
+  (If blank, default 3.)
 - Tone hint: {tone_hint}
   (Optional, e.g., "warm bedtime", "festive and adventurous", "quiet and reflective".)
 - Additional adaptation notes: {extra_prompt}
@@ -54,7 +54,7 @@ If a module is empty or absent for a given category, no additional guidance appl
 (Modules live under prompts/modules/. The backend selects which file to inject based on the reader profile. Operators can add, edit, or remove modules without touching the core prompts.)
 
 ## Core Instructions
-- Produce exactly the page count above (default 32), numbered 1..N in order.
+- Produce exactly the page count above (default 3), numbered 1..N in order.
 - Set primary_language and secondary_language fields to match the language names above exactly.
 - If age is blank/unknown, assume age 5.
 - Sentence length, vocabulary complexity, and narrative depth MUST match the child's age and the per-language proficiency above. If the language modules above specify per-language thresholds, those govern.

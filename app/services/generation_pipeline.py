@@ -37,7 +37,7 @@ class StoryPipelineRequest:
     cultures: str = ""
     foreign_terms: str = ""
     style_preset: str = "vibrant_storybook"
-    page_count: int = 32
+    page_count: int = 3
     tone_hint: str = ""
     # Reader profile modules
     gender: str | None = None

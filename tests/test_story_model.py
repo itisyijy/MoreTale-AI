@@ -33,7 +33,7 @@ class TestStoryValidation(unittest.TestCase):
     def test_shorter_age_adjusted_story_creation(self):
         pages = [
             self.valid_page.model_copy(update={"page_number": i + 1})
-            for i in range(8)
+            for i in range(2)
         ]
 
         story = Story(
@@ -47,7 +47,7 @@ class TestStoryValidation(unittest.TestCase):
             pages=pages,
         )
 
-        self.assertEqual(len(story.pages), 8)
+        self.assertEqual(len(story.pages), 2)
 
     def test_invalid_page_count_high(self):
         pages = [
@@ -67,7 +67,7 @@ class TestStoryValidation(unittest.TestCase):
                 pages=pages,
             )
 
-        self.assertIn("at most 32 items", str(context.exception))
+        self.assertIn("at most 3 items", str(context.exception))
 
     def test_invalid_page_sequence(self):
         pages = [

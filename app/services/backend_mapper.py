@@ -27,12 +27,12 @@ _AGE_GROUP_TO_INT: dict[AgeGroup, int] = {
 }
 
 _AGE_GROUP_TO_PAGE_COUNT: dict[AgeGroup, int] = {
-    AgeGroup.AGE_0_2: 8,
-    AgeGroup.AGE_3_4: 12,
-    AgeGroup.AGE_5_6: 16,
-    AgeGroup.AGE_7_8: 24,
-    AgeGroup.AGE_9_10: 32,
-    AgeGroup.AGE_10_PLUS: 32,
+    AgeGroup.AGE_0_2: 3,
+    AgeGroup.AGE_3_4: 3,
+    AgeGroup.AGE_5_6: 3,
+    AgeGroup.AGE_7_8: 3,
+    AgeGroup.AGE_9_10: 3,
+    AgeGroup.AGE_10_PLUS: 3,
 }
 
 # Writing guidance per proficiency level
