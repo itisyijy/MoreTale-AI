@@ -139,6 +139,29 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertIn("Child nationality: KR", pipeline.extra_prompt)
         self.assertIn("Parent country: VN", pipeline.extra_prompt)
 
+    def test_test_sentence_limit_is_added_only_when_env_is_set(self) -> None:
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "friendship",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "en",
+            }
+        )
+
+        pipeline = map_generate_request_to_pipeline(request)
+        self.assertNotIn("Test-only page brevity", pipeline.extra_prompt)
+
+        with patch.dict(
+            os.environ,
+            {"MORETALE_TEST_MAX_SENTENCES_PER_PAGE": "2"},
+            clear=False,
+        ):
+            pipeline = map_generate_request_to_pipeline(request)
+
+        self.assertIn("Test-only page brevity", pipeline.extra_prompt)
+        self.assertIn("at most 2 short sentence(s) per page", pipeline.extra_prompt)
+
     def test_story_generate_response_serializes_to_backend_camel_case(self) -> None:
         response = StoryGenerateResponse(
             title="Mina's Adventure",
