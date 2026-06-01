@@ -24,7 +24,7 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
   - 모델/언어 allowlist 검증 (퀴즈 모델 포함)
   - 입력 길이 제한
   - 서버 재시작 시 `running` 상태 Job 자동 복구 (`SERVER_RESTARTED` → `failed`)
-- 스토리 32페이지, 선택형 critic 품질 루프, 퀴즈 생성 (`generators/quiz`), 뷰어 자동재생/인쇄/퀴즈 UI 추가
+- 환경변수 기반 스토리 페이지 수, 선택형 critic 품질 루프, 퀴즈 생성 (`generators/quiz`), 뷰어 자동재생/인쇄/퀴즈 UI 추가
 
 ## 프로젝트 구조
 
@@ -97,6 +97,7 @@ MORETALE_RATE_LIMIT_POST_STORIES_PER_MIN=5
 MORETALE_THEME_MAX_LEN=120
 MORETALE_EXTRA_PROMPT_MAX_LEN=2000
 MORETALE_CHILD_NAME_MAX_LEN=40
+MORETALE_STORY_PAGE_COUNT=32
 MORETALE_ALLOWED_STORY_MODELS=gemini-2.5-flash
 MORETALE_ALLOWED_CRITIC_MODELS=gemini-2.5-flash
 MORETALE_ALLOWED_QUIZ_MODELS=gemini-2.5-flash

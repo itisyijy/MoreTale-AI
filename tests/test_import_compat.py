@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import unittest
+import os
 from importlib import import_module
 
 from generators.illustration.illustration_prompt_utils import (
@@ -39,6 +40,7 @@ class TestImportCompatibility(unittest.TestCase):
             check=False,
             capture_output=True,
             text=True,
+            env={**os.environ, "MORETALE_STORY_PAGE_COUNT": "3"},
         )
         if (
             result.returncode != 0

@@ -1,5 +1,8 @@
+import os
 import unittest
+from unittest.mock import patch
 
+from app.core.config import get_settings
 from app.schemas.story import GeneratedSlide, StoryGenerateRequest, StoryGenerateResponse
 from app.services.backend_mapper import (
     map_generate_request_to_pipeline,
@@ -9,6 +12,15 @@ from generators.story.story_model import Page, Story
 
 
 class TestBackendIntegrationContract(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env_patcher = patch.dict(
+            os.environ,
+            {"MORETALE_STORY_PAGE_COUNT": "3"},
+            clear=False,
+        )
+        self.env_patcher.start()
+        self.addCleanup(self.env_patcher.stop)
+
     def test_story_generate_request_accepts_swagger_payload(self) -> None:
         request = StoryGenerateRequest.model_validate(
             {
@@ -45,17 +57,17 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertEqual(pipeline.page_count, 3)
         self.assertIn("흥부와 놀부", pipeline.extra_prompt)
 
-    def test_backend_story_page_count_is_internal_age_policy(self) -> None:
+    def test_backend_story_page_count_uses_env_for_every_age_group(self) -> None:
         cases = [
-            ("AGE_0_2", 3),
-            ("AGE_3_4", 3),
-            ("AGE_5_6", 3),
-            ("AGE_7_8", 3),
-            ("AGE_9_10", 3),
-            ("AGE_10_PLUS", 3),
+            "AGE_0_2",
+            "AGE_3_4",
+            "AGE_5_6",
+            "AGE_7_8",
+            "AGE_9_10",
+            "AGE_10_PLUS",
         ]
 
-        for age_group, expected_page_count in cases:
+        for age_group in cases:
             with self.subTest(age_group=age_group):
                 request = StoryGenerateRequest.model_validate(
                     {
@@ -69,7 +81,44 @@ class TestBackendIntegrationContract(unittest.TestCase):
 
                 pipeline = map_generate_request_to_pipeline(request)
 
-                self.assertEqual(pipeline.page_count, expected_page_count)
+                self.assertEqual(pipeline.page_count, 3)
+
+    def test_backend_story_page_count_env_can_change_without_age_policy(self) -> None:
+        with patch.dict(os.environ, {"MORETALE_STORY_PAGE_COUNT": "16"}, clear=False):
+            request = StoryGenerateRequest.model_validate(
+                {
+                    "prompt": "friendship",
+                    "childName": "Mina",
+                    "primaryLanguage": "ko",
+                    "secondaryLanguage": "en",
+                    "ageGroup": "AGE_0_2",
+                }
+            )
+
+            pipeline = map_generate_request_to_pipeline(request)
+
+        self.assertEqual(pipeline.page_count, 16)
+
+    def test_story_page_count_env_is_required(self) -> None:
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key != "MORETALE_STORY_PAGE_COUNT"
+        }
+        with patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(ValueError):
+                get_settings()
+
+    def test_story_page_count_env_must_be_valid(self) -> None:
+        for value in ("0", "33", "abc"):
+            with self.subTest(value=value):
+                with patch.dict(
+                    os.environ,
+                    {"MORETALE_STORY_PAGE_COUNT": value},
+                    clear=False,
+                ):
+                    with self.assertRaises(ValueError):
+                        get_settings()
 
     def test_story_request_accepts_optional_profile_context_from_story_init(self) -> None:
         request = StoryGenerateRequest.model_validate(

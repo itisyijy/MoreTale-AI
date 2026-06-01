@@ -21,6 +21,12 @@ if TYPE_CHECKING:
     from generators.tts.tts_generator import TTSGenerator
 
 
+def _default_story_page_count() -> int:
+    from app.core.config import get_settings
+
+    return get_settings().story_page_count
+
+
 @dataclass(frozen=True)
 class StoryPipelineRequest:
     child_name: str
@@ -37,7 +43,7 @@ class StoryPipelineRequest:
     cultures: str = ""
     foreign_terms: str = ""
     style_preset: str = "vibrant_storybook"
-    page_count: int = 3
+    page_count: int = dataclasses.field(default_factory=_default_story_page_count)
     tone_hint: str = ""
     # Reader profile modules
     gender: str | None = None

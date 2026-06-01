@@ -48,12 +48,17 @@ class StoryGenerator:
         cultures: str = "",
         foreign_terms: str = "",
         style_preset: str = "vibrant_storybook",
-        page_count: int = 3,
+        page_count: int | None = None,
         tone_hint: str = "",
         gender: Optional[str] = None,
         family_situation: Optional[str] = None,
         interest: Optional[str] = None,
     ) -> Story:
+        if page_count is None:
+            from app.core.config import get_settings
+
+            page_count = get_settings().story_page_count
+
         user_prompt = self.prompts.generate_user_prompt(
             child_name=child_name,
             child_age=child_age,

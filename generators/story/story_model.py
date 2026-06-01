@@ -2,9 +2,9 @@ from typing import List
 
 from pydantic import BaseModel, Field, field_validator
 
-STORY_PAGE_COUNT = 3
+STORY_PAGE_COUNT = 32
 STORY_MIN_PAGE_COUNT = 1
-STORY_MAX_PAGE_COUNT = 3
+STORY_MAX_PAGE_COUNT = 32
 
 
 class GeneratedVocabularyEntry(BaseModel):

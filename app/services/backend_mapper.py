@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.core.languages import resolve_language_name, to_story_iso
+from app.core.config import get_settings
 from app.schemas.story import (
     AgeGroup,
     FamilyConfiguration,
@@ -26,15 +27,6 @@ _AGE_GROUP_TO_INT: dict[AgeGroup, int] = {
     AgeGroup.AGE_10_PLUS: 10,
 }
 
-_AGE_GROUP_TO_PAGE_COUNT: dict[AgeGroup, int] = {
-    AgeGroup.AGE_0_2: 3,
-    AgeGroup.AGE_3_4: 3,
-    AgeGroup.AGE_5_6: 3,
-    AgeGroup.AGE_7_8: 3,
-    AgeGroup.AGE_9_10: 3,
-    AgeGroup.AGE_10_PLUS: 3,
-}
-
 # Writing guidance per proficiency level
 _PROFICIENCY_WRITING_GUIDE: dict[LanguageProficiency, dict[str, str]] = {
     LanguageProficiency.EGG: {
@@ -52,7 +44,7 @@ _PROFICIENCY_WRITING_GUIDE: dict[LanguageProficiency, dict[str, str]] = {
         "guidance": (
             "Use high-frequency vocabulary with occasional new words supported by context. "
             "Keep sentences short (5–7 words). "
-            "Repeat important vocabulary across at least 3 pages. "
+            "Repeat important vocabulary across as many pages as the configured page count allows. "
             "Use simple present and simple past tense. "
             "Avoid idioms or culturally specific expressions."
         ),
@@ -254,21 +246,8 @@ def _resolve_family_situation(req: StoryGenerateRequest) -> str | None:
 
 
 def _resolve_page_count(req: StoryGenerateRequest) -> int:
-    if req.age_group:
-        return _AGE_GROUP_TO_PAGE_COUNT[req.age_group]
-
-    child_age = req.child_age
-    if child_age is None:
-        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_5_6]
-    if child_age <= 2:
-        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_0_2]
-    if child_age <= 4:
-        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_3_4]
-    if child_age <= 6:
-        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_5_6]
-    if child_age <= 8:
-        return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_7_8]
-    return _AGE_GROUP_TO_PAGE_COUNT[AgeGroup.AGE_9_10]
+    _ = req
+    return get_settings().story_page_count
 
 
 def map_generate_request_to_pipeline(

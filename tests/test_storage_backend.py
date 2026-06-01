@@ -103,12 +103,17 @@ class TestGCSStorageBackend(unittest.TestCase):
 class TestGetStorageBackend(unittest.TestCase):
     def test_default_returns_local_backend(self) -> None:
         env = {k: v for k, v in os.environ.items() if k != "MORETALE_STORAGE_BACKEND"}
+        env["MORETALE_STORY_PAGE_COUNT"] = "3"
         with patch.dict(os.environ, env, clear=True):
             backend = get_storage_backend()
         self.assertIsInstance(backend, LocalStorageBackend)
 
     def test_local_env_returns_local_backend(self) -> None:
-        with patch.dict(os.environ, {"MORETALE_STORAGE_BACKEND": "local"}, clear=False):
+        with patch.dict(
+            os.environ,
+            {"MORETALE_STORAGE_BACKEND": "local", "MORETALE_STORY_PAGE_COUNT": "3"},
+            clear=False,
+        ):
             backend = get_storage_backend()
         self.assertIsInstance(backend, LocalStorageBackend)
 
@@ -119,6 +124,7 @@ class TestGetStorageBackend(unittest.TestCase):
                 "MORETALE_STORAGE_BACKEND": "gcs",
                 "MORETALE_GCS_BUCKET": "my-bucket",
                 "MORETALE_GCS_KEY_PREFIX": "",
+                "MORETALE_STORY_PAGE_COUNT": "3",
             },
             clear=False,
         ):
@@ -132,6 +138,7 @@ class TestGetStorageBackend(unittest.TestCase):
                 "MORETALE_STORAGE_BACKEND": "gcs",
                 "MORETALE_GCS_BUCKET": "my-bucket",
                 "MORETALE_GCS_KEY_PREFIX": "",
+                "MORETALE_STORY_PAGE_COUNT": "3",
             },
             clear=False,
         ):

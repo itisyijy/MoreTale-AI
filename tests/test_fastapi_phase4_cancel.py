@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+os.environ.setdefault("MORETALE_STORY_PAGE_COUNT", "3")
+
 try:
     from tests.asgi_test_client import ASGITestClient as TestClient
 except ModuleNotFoundError:  # pragma: no cover
@@ -80,6 +82,7 @@ class TestFastAPIPhase4Cancel(unittest.TestCase):
                 "MORETALE_API_KEY": "test-api-key",
                 "MORETALE_OUTPUTS_DIR": self.tmp_dir.name,
                 "MORETALE_RATE_LIMIT_POST_STORIES_PER_MIN": "100",
+                "MORETALE_STORY_PAGE_COUNT": "3",
             },
             clear=False,
         )

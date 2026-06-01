@@ -83,6 +83,7 @@ class TestStoryOrchestrator(unittest.TestCase):
                 "MORETALE_API_KEY": "test-api-key",
                 "MORETALE_OUTPUTS_DIR": self.tmp_dir.name,
                 "MORETALE_RATE_LIMIT_POST_STORIES_PER_MIN": "100",
+                "MORETALE_STORY_PAGE_COUNT": "3",
             },
             clear=False,
         )

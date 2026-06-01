@@ -31,6 +31,7 @@ class TestHealthChecks(unittest.TestCase):
             "NANO_BANANA_KEY": "image-key",
             "MORETALE_OUTPUTS_DIR": self.tmp_dir.name,
             "MORETALE_HEALTHCHECK_TIMEOUT_SEC": "1",
+            "MORETALE_STORY_PAGE_COUNT": "3",
             "MORETALE_ALLOWED_STORY_MODELS": "gemini-2.5-flash",
             "MORETALE_ALLOWED_TTS_MODELS": "gemini-2.5-flash-preview-tts",
             "MORETALE_ALLOWED_ILLUSTRATION_MODELS": "gemini-2.5-flash-image",

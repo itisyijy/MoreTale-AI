@@ -24,6 +24,19 @@ def _parse_int_env(name: str, default: int) -> int:
     return value
 
 
+def _parse_required_int_env(name: str, *, minimum: int, maximum: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        raise ValueError(f"{name} is required.")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer.") from exc
+    if value < minimum or value > maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}.")
+    return value
+
+
 def _parse_float_env(name: str, default: float) -> float:
     raw = (os.getenv(name) or "").strip()
     if not raw:
@@ -50,6 +63,7 @@ class Settings:
     api_keys: tuple[str, ...]
     project_root: Path
     outputs_dir: Path
+    story_page_count: int
     static_outputs_prefix: str = "/static/outputs"
     # Storage backend: "local" (default) or "gcs"
     storage_backend: str = "local"
@@ -108,6 +122,11 @@ def get_settings() -> Settings:
             default=2000,
         ),
         child_name_max_len=_parse_int_env("MORETALE_CHILD_NAME_MAX_LEN", default=40),
+        story_page_count=_parse_required_int_env(
+            "MORETALE_STORY_PAGE_COUNT",
+            minimum=1,
+            maximum=32,
+        ),
         allowed_story_models=_parse_csv_env(
             "MORETALE_ALLOWED_STORY_MODELS",
             default=["gemini-2.5-flash"],

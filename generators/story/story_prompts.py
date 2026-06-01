@@ -56,12 +56,17 @@ class StoryPrompt:
         cultures: str = "",
         foreign_terms: str = "",
         style_preset: str = "vibrant_storybook",
-        page_count: int = 3,
+        page_count: int | None = None,
         tone_hint: str = "",
         gender: Optional[str] = None,
         family_situation: Optional[str] = None,
         interest: Optional[str] = None,
     ) -> str:
+        if page_count is None:
+            from app.core.config import get_settings
+
+            page_count = get_settings().story_page_count
+
         if self._user_prompt_template is None:
             self._user_prompt_template = self._read_text(
                 self.user_prompt_path, "User prompt"

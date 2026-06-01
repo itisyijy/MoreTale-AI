@@ -53,6 +53,15 @@ def _fake_story(title: str = "Test Story") -> SimpleNamespace:
 
 
 class TestGenerationPipeline(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env_patcher = patch.dict(
+            os.environ,
+            {"MORETALE_STORY_PAGE_COUNT": "3"},
+            clear=False,
+        )
+        self.env_patcher.start()
+        self.addCleanup(self.env_patcher.stop)
+
     def test_generate_story_uses_current_story_generator_arguments(self):
         request = _build_request()
         fake_story = _fake_story()
@@ -119,6 +128,12 @@ class TestGenerationPipeline(unittest.TestCase):
         self.assertTrue(pipeline_request.enable_critic)
         self.assertEqual(pipeline_request.critic_model, "gemini-2.5-flash")
         self.assertEqual(pipeline_request.critic_max_retries, 1)
+
+    def test_pipeline_request_default_page_count_uses_env(self):
+        with patch.dict(os.environ, {"MORETALE_STORY_PAGE_COUNT": "16"}, clear=False):
+            request = _build_request()
+
+        self.assertEqual(request.page_count, 16)
 
     def test_invalid_critic_model_is_rejected(self):
         with self.assertRaises(ValueError):

@@ -5,8 +5,8 @@
 AI 스토리 생성 파이프라인은 다음 단계를 포함하며 **최소 10분 이상** 소요된다.
 
 - 스토리 텍스트 생성 (Gemini) — 약 30초
-- 삽화 생성 32페이지 (Gemini Image) — 약 5~10분
-- TTS 생성 32페이지 (Gemini TTS) — 약 3~5분
+- 삽화 생성은 `MORETALE_STORY_PAGE_COUNT` 페이지 수에 비례 (Gemini Image)
+- TTS 생성은 `MORETALE_STORY_PAGE_COUNT` 페이지 수에 비례 (Gemini TTS)
 
 현재 백엔드 Swagger의 `POST /api/stories/generate`는 완료된 `StoryGenerateResponse`를 직접 반환하는 동기 구조로 명세되어 있어, **AI의 비동기 처리 방식과 불일치**한다.
 

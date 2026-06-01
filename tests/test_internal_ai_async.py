@@ -4,6 +4,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+os.environ.setdefault("MORETALE_STORY_PAGE_COUNT", "3")
+
 from generators.story.story_model import Page, Story
 
 try:
@@ -31,6 +33,7 @@ class TestInternalAIAsyncAPI(unittest.TestCase):
             {
                 "MORETALE_API_KEY": "test-api-key",
                 "MORETALE_OUTPUTS_DIR": self.tmp_dir.name,
+                "MORETALE_STORY_PAGE_COUNT": "3",
             },
             clear=False,
         )
@@ -183,7 +186,7 @@ class TestInternalAIStoryRunner(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(
             os.environ,
-            {"MORETALE_OUTPUTS_DIR": tmp_dir},
+            {"MORETALE_OUTPUTS_DIR": tmp_dir, "MORETALE_STORY_PAGE_COUNT": "3"},
             clear=False,
         ):
             story = Story(
@@ -272,6 +275,7 @@ class TestInternalAIStoryRunner(unittest.TestCase):
             os.environ,
             {
                 "MORETALE_OUTPUTS_DIR": tmp_dir,
+                "MORETALE_STORY_PAGE_COUNT": "3",
                 "MORETALE_STORAGE_BACKEND": "gcs",
                 "MORETALE_GCS_BUCKET": "moretale-assets",
                 "MORETALE_GCS_KEY_PREFIX": "generated",

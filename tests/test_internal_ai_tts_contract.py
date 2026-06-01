@@ -50,6 +50,7 @@ class TestInternalAITTSContract(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     env = {
                         "MORETALE_OUTPUTS_DIR": tmp_dir,
+                        "MORETALE_STORY_PAGE_COUNT": "3",
                         "GEMINI_TTS_API_KEY": "test-tts-key",
                     }
                     with patch.dict(os.environ, env, clear=False), patch(
@@ -79,6 +80,7 @@ class TestInternalAITTSContract(unittest.TestCase):
             env = {
                 "GEMINI_TTS_API_KEY": "dummy",
                 "MORETALE_OUTPUTS_DIR": tmp_dir,
+                "MORETALE_STORY_PAGE_COUNT": "3",
                 "MORETALE_STORAGE_BACKEND": "gcs",
                 "MORETALE_GCS_BUCKET": "moretale-assets",
                 "MORETALE_GCS_KEY_PREFIX": "generated",

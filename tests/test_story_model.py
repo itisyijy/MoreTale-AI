@@ -67,7 +67,7 @@ class TestStoryValidation(unittest.TestCase):
                 pages=pages,
             )
 
-        self.assertIn("at most 3 items", str(context.exception))
+        self.assertIn("at most 32 items", str(context.exception))
 
     def test_invalid_page_sequence(self):
         pages = [

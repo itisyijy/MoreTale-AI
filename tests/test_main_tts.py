@@ -52,9 +52,14 @@ class TestMainTTS(unittest.TestCase):
                     "main.run_story_generation_pipeline",
                     side_effect=RuntimeError("GEMINI_TTS_API_KEY environment variable not set."),
                 ):
-                    with patch.object(sys, "argv", args):
-                        with self.assertRaises(SystemExit) as context:
-                            main.main()
+                    with patch.dict(
+                        os.environ,
+                        {"MORETALE_STORY_PAGE_COUNT": "3"},
+                        clear=False,
+                    ):
+                        with patch.object(sys, "argv", args):
+                            with self.assertRaises(SystemExit) as context:
+                                main.main()
                 self.assertEqual(context.exception.code, 1)
             finally:
                 os.chdir(original_cwd)
@@ -90,8 +95,13 @@ class TestMainTTS(unittest.TestCase):
                         "main.run_story_generation_pipeline",
                         return_value=_fake_pipeline_result(tts_result=tts_result),
                     ) as mocked_pipeline:
-                        with patch.object(sys, "argv", args):
-                            main.main()
+                        with patch.dict(
+                            os.environ,
+                            {"MORETALE_STORY_PAGE_COUNT": "3"},
+                            clear=False,
+                        ):
+                            with patch.object(sys, "argv", args):
+                                main.main()
 
                 pipeline_request = mocked_pipeline.call_args.kwargs["request"]
                 self.assertTrue(pipeline_request.enable_tts)

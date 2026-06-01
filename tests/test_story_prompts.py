@@ -16,6 +16,7 @@ class TestStoryPrompt(unittest.TestCase):
             secondary_lang="English",
             theme="Friendship",
             extra_prompt="Include a dragon.",
+            page_count=16,
         )
 
         self.assertIn("children's book author", system_instruction)
@@ -28,7 +29,10 @@ class TestStoryPrompt(unittest.TestCase):
         self.assertIn("English", user_prompt)
         self.assertIn("Friendship", user_prompt)
         self.assertIn("Include a dragon.", user_prompt)
+        self.assertIn("Page count: 16", user_prompt)
         self.assertIn("Produce exactly the page count above", user_prompt)
+        self.assertNotIn("default 3", user_prompt)
+        self.assertNotIn("default 32", user_prompt)
         self.assertIn("primary_language and secondary_language fields", user_prompt)
         self.assertIn("vocabulary array", user_prompt)
         self.assertIn("primary_definition", system_instruction)
@@ -67,6 +71,7 @@ class TestStoryPrompt(unittest.TestCase):
                     primary_lang="Korean",
                     secondary_lang="English",
                     theme="Adventure",
+                    page_count=3,
                 )
 
             self.assertIn("unknown placeholder", str(context.exception))
