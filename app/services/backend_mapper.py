@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.core.languages import resolve_language_name, to_story_iso
+from app.core.config import get_settings
 from app.schemas.story import (
     AgeGroup,
     FamilyConfiguration,
@@ -14,6 +15,8 @@ from app.schemas.story import (
 )
 from app.services.generation_pipeline import StoryPipelineRequest
 from generators.story.story_model import Story
+
+PageAssetUrlMap = dict[int, dict[str, str | None]]
 
 _AGE_GROUP_TO_INT: dict[AgeGroup, int] = {
     AgeGroup.AGE_0_2: 1,
@@ -41,7 +44,7 @@ _PROFICIENCY_WRITING_GUIDE: dict[LanguageProficiency, dict[str, str]] = {
         "guidance": (
             "Use high-frequency vocabulary with occasional new words supported by context. "
             "Keep sentences short (5–7 words). "
-            "Repeat important vocabulary across at least 3 pages. "
+            "Repeat important vocabulary across as many pages as the configured page count allows. "
             "Use simple present and simple past tense. "
             "Avoid idioms or culturally specific expressions."
         ),
@@ -242,6 +245,11 @@ def _resolve_family_situation(req: StoryGenerateRequest) -> str | None:
     return None
 
 
+def _resolve_page_count(req: StoryGenerateRequest) -> int:
+    _ = req
+    return get_settings().story_page_count
+
+
 def map_generate_request_to_pipeline(
     req: StoryGenerateRequest,
     story_model: str = "gemini-2.5-flash",
@@ -288,7 +296,7 @@ def map_generate_request_to_pipeline(
         cultures=f"{primary_name}, {secondary_name}",
         foreign_terms="",
         style_preset="vibrant_storybook",
-        page_count=32,
+        page_count=_resolve_page_count(req),
         tone_hint=tone_hint,
         gender=gender,
         family_situation=family_situation,
@@ -303,15 +311,17 @@ def map_generate_request_to_pipeline(
 def map_story_to_generate_response(
     story: Story,
     req: StoryGenerateRequest,
+    page_assets: PageAssetUrlMap | None = None,
 ) -> StoryGenerateResponse:
+    page_assets = page_assets or {}
     slides = [
         GeneratedSlide(
-            order=page.page_number,
+            order=page.page_number - 1,
             text_kr=page.text_primary,
             text_native=page.text_secondary,
-            image_url=None,
-            audio_url_kr=None,
-            audio_url_native=None,
+            image_url=page_assets.get(page.page_number, {}).get("image_url"),
+            audio_url_kr=page_assets.get(page.page_number, {}).get("audio_url_kr"),
+            audio_url_native=page_assets.get(page.page_number, {}).get("audio_url_native"),
         )
         for page in story.pages
     ]

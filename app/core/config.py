@@ -4,6 +4,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
+
 
 def _parse_int_env(name: str, default: int) -> int:
     raw = (os.getenv(name) or "").strip()
@@ -14,6 +20,32 @@ def _parse_int_env(name: str, default: int) -> int:
     except ValueError:
         return default
     if value < 1:
+        return default
+    return value
+
+
+def _parse_required_int_env(name: str, *, minimum: int, maximum: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        raise ValueError(f"{name} is required.")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer.") from exc
+    if value < minimum or value > maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}.")
+    return value
+
+
+def _parse_float_env(name: str, default: float) -> float:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    if value <= 0:
         return default
     return value
 
@@ -31,6 +63,7 @@ class Settings:
     api_keys: tuple[str, ...]
     project_root: Path
     outputs_dir: Path
+    story_page_count: int
     static_outputs_prefix: str = "/static/outputs"
     # Storage backend: "local" (default) or "gcs"
     storage_backend: str = "local"
@@ -45,6 +78,7 @@ class Settings:
     allowed_critic_models: tuple[str, ...] = ("gemini-2.5-flash",)
     allowed_tts_models: tuple[str, ...] = ("gemini-2.5-flash-preview-tts",)
     allowed_illustration_models: tuple[str, ...] = ("gemini-2.5-flash-image",)
+    healthcheck_timeout_sec: float = 5.0
     allowed_languages: tuple[str, ...] = (
         "Korean",
         "English",
@@ -62,7 +96,7 @@ class Settings:
 
 
 def get_settings() -> Settings:
-    project_root = Path(__file__).resolve().parents[2]
+    project_root = PROJECT_ROOT
     outputs_override = (os.getenv("MORETALE_OUTPUTS_DIR") or "").strip()
     outputs_dir = (
         Path(outputs_override).resolve() if outputs_override else project_root / "outputs"
@@ -88,6 +122,11 @@ def get_settings() -> Settings:
             default=2000,
         ),
         child_name_max_len=_parse_int_env("MORETALE_CHILD_NAME_MAX_LEN", default=40),
+        story_page_count=_parse_required_int_env(
+            "MORETALE_STORY_PAGE_COUNT",
+            minimum=1,
+            maximum=32,
+        ),
         allowed_story_models=_parse_csv_env(
             "MORETALE_ALLOWED_STORY_MODELS",
             default=["gemini-2.5-flash"],
@@ -107,6 +146,10 @@ def get_settings() -> Settings:
         allowed_illustration_models=_parse_csv_env(
             "MORETALE_ALLOWED_ILLUSTRATION_MODELS",
             default=["gemini-2.5-flash-image"],
+        ),
+        healthcheck_timeout_sec=_parse_float_env(
+            "MORETALE_HEALTHCHECK_TIMEOUT_SEC",
+            default=5.0,
         ),
         allowed_languages=_parse_csv_env(
             "MORETALE_ALLOWED_LANGUAGES",

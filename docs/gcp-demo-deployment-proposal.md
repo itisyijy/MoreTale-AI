@@ -477,12 +477,12 @@ Billing budget alert를 설정한다.
 
 ### AI
 
-- [ ] Dockerfile 작성
-- [ ] GCS storage backend 구현 완료
-- [ ] `google-cloud-storage` 의존성 추가
+- [x] Dockerfile 작성
+- [x] GCS storage backend 구현 완료
+- [x] `google-cloud-storage` 의존성 추가
 - [ ] local `/static/outputs` 의존 제거 또는 fallback으로만 유지
 - [ ] job 상태 저장 정책 확정
-- [ ] `/healthz` endpoint 확인
+- [ ] `/health` endpoint 확인
 
 ### 운영
 

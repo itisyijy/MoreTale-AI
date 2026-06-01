@@ -1,5 +1,8 @@
+import os
 import unittest
+from unittest.mock import patch
 
+from app.core.config import get_settings
 from app.schemas.story import GeneratedSlide, StoryGenerateRequest, StoryGenerateResponse
 from app.services.backend_mapper import (
     map_generate_request_to_pipeline,
@@ -9,6 +12,15 @@ from generators.story.story_model import Page, Story
 
 
 class TestBackendIntegrationContract(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env_patcher = patch.dict(
+            os.environ,
+            {"MORETALE_STORY_PAGE_COUNT": "3"},
+            clear=False,
+        )
+        self.env_patcher.start()
+        self.addCleanup(self.env_patcher.stop)
+
     def test_story_generate_request_accepts_swagger_payload(self) -> None:
         request = StoryGenerateRequest.model_validate(
             {
@@ -42,7 +54,71 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertEqual(pipeline.child_age, 5)
         self.assertEqual(pipeline.primary_lang, "Korean")
         self.assertEqual(pipeline.secondary_lang, "Vietnamese")
+        self.assertEqual(pipeline.page_count, 3)
         self.assertIn("흥부와 놀부", pipeline.extra_prompt)
+
+    def test_backend_story_page_count_uses_env_for_every_age_group(self) -> None:
+        cases = [
+            "AGE_0_2",
+            "AGE_3_4",
+            "AGE_5_6",
+            "AGE_7_8",
+            "AGE_9_10",
+            "AGE_10_PLUS",
+        ]
+
+        for age_group in cases:
+            with self.subTest(age_group=age_group):
+                request = StoryGenerateRequest.model_validate(
+                    {
+                        "prompt": "friendship",
+                        "childName": "Mina",
+                        "primaryLanguage": "ko",
+                        "secondaryLanguage": "en",
+                        "ageGroup": age_group,
+                    }
+                )
+
+                pipeline = map_generate_request_to_pipeline(request)
+
+                self.assertEqual(pipeline.page_count, 3)
+
+    def test_backend_story_page_count_env_can_change_without_age_policy(self) -> None:
+        with patch.dict(os.environ, {"MORETALE_STORY_PAGE_COUNT": "16"}, clear=False):
+            request = StoryGenerateRequest.model_validate(
+                {
+                    "prompt": "friendship",
+                    "childName": "Mina",
+                    "primaryLanguage": "ko",
+                    "secondaryLanguage": "en",
+                    "ageGroup": "AGE_0_2",
+                }
+            )
+
+            pipeline = map_generate_request_to_pipeline(request)
+
+        self.assertEqual(pipeline.page_count, 16)
+
+    def test_story_page_count_env_is_required(self) -> None:
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key != "MORETALE_STORY_PAGE_COUNT"
+        }
+        with patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(ValueError):
+                get_settings()
+
+    def test_story_page_count_env_must_be_valid(self) -> None:
+        for value in ("0", "33", "abc"):
+            with self.subTest(value=value):
+                with patch.dict(
+                    os.environ,
+                    {"MORETALE_STORY_PAGE_COUNT": value},
+                    clear=False,
+                ):
+                    with self.assertRaises(ValueError):
+                        get_settings()
 
     def test_story_request_accepts_optional_profile_context_from_story_init(self) -> None:
         request = StoryGenerateRequest.model_validate(
@@ -123,6 +199,41 @@ class TestBackendIntegrationContract(unittest.TestCase):
 
                 self.assertEqual(payload["primaryLanguage"], "ko")
                 self.assertEqual(payload["secondaryLanguage"], "en")
+
+    def test_story_response_slide_order_is_zero_based_for_backend(self) -> None:
+        story = Story(
+            title_primary="제목",
+            title_secondary="Title",
+            author_name="Mina",
+            primary_language="Korean",
+            secondary_language="English",
+            image_style="storybook",
+            main_character_design="child",
+            pages=[
+                Page(
+                    page_number=index,
+                    text_primary=f"문장 {index}",
+                    text_secondary=f"Sentence {index}",
+                    illustration_prompt=f"Scene {index}",
+                )
+                for index in range(1, 4)
+            ],
+        )
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "friendship",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "en",
+            }
+        )
+
+        payload = map_story_to_generate_response(story, request).model_dump(
+            mode="json",
+            by_alias=True,
+        )
+
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
 
 
 if __name__ == "__main__":

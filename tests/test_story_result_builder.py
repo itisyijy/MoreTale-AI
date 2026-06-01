@@ -58,6 +58,7 @@ class TestStoryResultBuilder(unittest.TestCase):
             os.environ,
             {
                 "MORETALE_OUTPUTS_DIR": self.tmp_dir.name,
+                "MORETALE_STORY_PAGE_COUNT": "3",
             },
             clear=False,
         )

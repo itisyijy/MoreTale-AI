@@ -20,6 +20,10 @@ class StorageBackend(Protocol):
         """
         ...
 
+    def delete(self, relative_path: str) -> None:
+        """Delete a stored object when the backend supports deletion."""
+        ...
+
 
 class LocalStorageBackend:
     """Serves files from local disk via FastAPI's StaticFiles mount."""
@@ -34,35 +38,52 @@ class LocalStorageBackend:
     def upload(self, local_path: Path, relative_path: str) -> str:
         return self.public_url(relative_path)
 
+    def delete(self, relative_path: str) -> None:
+        _ = relative_path
+
 
 class GCSStorageBackend:
     """Uploads files to Google Cloud Storage and returns public CDN URLs.
 
-    TODO: install google-cloud-storage and set GOOGLE_APPLICATION_CREDENTIALS
-          (or use Workload Identity in GKE) before enabling this backend.
+    Uses Application Default Credentials. On Cloud Run, grant the service account
+    permission to write objects to the configured bucket.
     """
 
     def __init__(self, bucket: str, key_prefix: str = "") -> None:
         self._bucket = bucket
         self._prefix = key_prefix.strip("/")
 
-    def public_url(self, relative_path: str) -> str:
+    def object_name(self, relative_path: str) -> str:
         rel = str(relative_path).lstrip("/")
-        key = f"{self._prefix}/{rel}" if self._prefix else rel
-        return f"https://storage.googleapis.com/{self._bucket}/{key}"
+        return f"{self._prefix}/{rel}" if self._prefix else rel
+
+    def public_url(self, relative_path: str) -> str:
+        return f"https://storage.googleapis.com/{self._bucket}/{self.object_name(relative_path)}"
 
     def upload(self, local_path: Path, relative_path: str) -> str:
-        # TODO: uncomment once google-cloud-storage is added to requirements.txt
-        #
-        # from google.cloud import storage as gcs
-        # client = gcs.Client()
-        # bucket = client.bucket(self._bucket)
-        # rel = str(relative_path).lstrip("/")
-        # key = f"{self._prefix}/{rel}" if self._prefix else rel
-        # blob = bucket.blob(key)
-        # blob.upload_from_filename(str(local_path))
-        # return self.public_url(relative_path)
-        raise NotImplementedError("GCS upload not yet implemented")
+        if not self._bucket:
+            raise ValueError("MORETALE_GCS_BUCKET is required for GCS storage backend")
+
+        client = _build_gcs_client()
+        bucket = client.bucket(self._bucket)
+        blob = bucket.blob(self.object_name(relative_path))
+        blob.upload_from_filename(str(local_path))
+        return self.public_url(relative_path)
+
+    def delete(self, relative_path: str) -> None:
+        if not self._bucket:
+            raise ValueError("MORETALE_GCS_BUCKET is required for GCS storage backend")
+
+        client = _build_gcs_client()
+        bucket = client.bucket(self._bucket)
+        blob = bucket.blob(self.object_name(relative_path))
+        blob.delete()
+
+
+def _build_gcs_client():
+    from google.cloud import storage as gcs
+
+    return gcs.Client()
 
 
 def get_storage_backend() -> StorageBackend:

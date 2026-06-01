@@ -50,6 +50,7 @@ class TestInternalAITTSContract(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     env = {
                         "MORETALE_OUTPUTS_DIR": tmp_dir,
+                        "MORETALE_STORY_PAGE_COUNT": "3",
                         "GEMINI_TTS_API_KEY": "test-tts-key",
                     }
                     with patch.dict(os.environ, env, clear=False), patch(
@@ -71,6 +72,38 @@ class TestInternalAITTSContract(unittest.TestCase):
                 self.assertIn(f"/static/outputs/job-{index}/tts/tts_001.wav", result["audioUrl"])
                 self.assertEqual(len(FakeTTSGenerator.prompts), 1)
                 self.assertIn("Voice style: neutral.", FakeTTSGenerator.prompts[0])
+
+    def test_tts_job_uploads_audio_to_gcs_when_enabled(self) -> None:
+        from app.services.internal_ai_runners import run_tts_job
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            env = {
+                "GEMINI_TTS_API_KEY": "dummy",
+                "MORETALE_OUTPUTS_DIR": tmp_dir,
+                "MORETALE_STORY_PAGE_COUNT": "3",
+                "MORETALE_STORAGE_BACKEND": "gcs",
+                "MORETALE_GCS_BUCKET": "moretale-assets",
+                "MORETALE_GCS_KEY_PREFIX": "generated",
+            }
+            with patch.dict(os.environ, env, clear=False), patch(
+                "generators.tts.tts_generator.TTSGenerator",
+                FakeTTSGenerator,
+            ), patch("app.services.storage_backend._build_gcs_client") as client_factory:
+                result = run_tts_job(
+                    job_id="job-1",
+                    request_payload={
+                        "callbackUrl": "https://backend.test/internal/ai/callback",
+                        "text": "hello",
+                        "language": "ko-KR",
+                    },
+                )
+
+        bucket = client_factory.return_value.bucket.return_value
+        bucket.blob.assert_called_once_with("generated/job-1/tts/tts_001.wav")
+        self.assertEqual(
+            result["audioUrl"],
+            "https://storage.googleapis.com/moretale-assets/generated/job-1/tts/tts_001.wav",
+        )
 
 
 if __name__ == "__main__":

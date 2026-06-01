@@ -12,7 +12,7 @@ from generators.illustration.illustration_prompt_utils import (
     build_illustration_prefix,
     split_scene_prompt,
 )
-from generators.story.story_model import Story
+from generators.story.story_model import GeneratedStory, Story
 from generators.story.story_prompts import StoryPrompt
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -48,12 +48,17 @@ class StoryGenerator:
         cultures: str = "",
         foreign_terms: str = "",
         style_preset: str = "vibrant_storybook",
-        page_count: int = 32,
+        page_count: int | None = None,
         tone_hint: str = "",
         gender: Optional[str] = None,
         family_situation: Optional[str] = None,
         interest: Optional[str] = None,
     ) -> Story:
+        if page_count is None:
+            from app.core.config import get_settings
+
+            page_count = get_settings().story_page_count
+
         user_prompt = self.prompts.generate_user_prompt(
             child_name=child_name,
             child_age=child_age,
@@ -81,12 +86,12 @@ class StoryGenerator:
                     system_instruction=self.prompts.system_instruction,
                     temperature=1.0, # High creativity
                     response_mime_type="application/json",
-                    response_schema=Story,
+                    response_schema=GeneratedStory,
                 ),
             )
             
             if response.parsed:
-                story = response.parsed
+                story = Story.model_validate(response.parsed.model_dump())
             else:
                 story = Story.model_validate_json(response.text)
 

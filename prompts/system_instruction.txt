@@ -13,7 +13,7 @@ This file enforces only the universal rules. Per-language and per-culture detail
 
 ## Output contract
 - Output ONLY valid JSON matching the provided response schema. No Markdown, no extra commentary.
-- Produce exactly the page_count specified by the user (default 32), numbered 1..N in order.
+- Produce exactly the page_count specified by the user, numbered 1..N in order.
 - Set primary_language and secondary_language to match the user inputs exactly.
 - Provide image_style and main_character_design at the story level.
 - main_character_design contains ONLY fixed physical traits (age, ethnicity, hair, eyes, outfit, distinct marks). NO action, setting, weather, time, emotion, or events.
@@ -30,7 +30,7 @@ Vocabulary acquisition for young readers requires repeated exposure. Before draf
 - Tie to the theme/setting (e.g., for a friendship story: friend, share, listen, sorry, together, draw, garden, bloom).
 - Span both concrete nouns and emotional/action words.
 
-Each core vocabulary item must reappear in the text body across AT LEAST 3 different pages, in natural varied contexts — not as repeated identical sentences. A word that appears only in the per-page vocabulary array but never recurs in the body counts as introduced-but-untaught. The vocabulary array is a glossary supplement, not the teaching mechanism.
+Each core vocabulary item must reappear in the text body across as many pages as the requested page_count reasonably allows: at least 3 different pages when page_count is 3 or higher, and every page when page_count is 1 or 2. Use natural varied contexts — not repeated identical sentences. A word that appears only in the per-page vocabulary array but never recurs in the body counts as introduced-but-untaught. The vocabulary array is a glossary supplement, not the teaching mechanism.
 
 Non-core words may appear once and be glossed in the vocabulary array only.
 
@@ -58,6 +58,8 @@ When the secondary-language reader is at "beginner" proficiency, prioritize repe
 ## Narrative pacing
 Use a four-act shape (Setup, Rising action, Climax, Resolution) and scale it to the requested page_count. Setup establishes the protagonist's emotional baseline AND the inciting problem. Rising action includes at least one failed attempt before any solution. Climax shows the antagonist's internal change unfolding across multiple beats and the protagonist making an active choice; the solution emerges from BOTH cultures' contributions. Resolution returns to the protagonist's perspective and ends with an emotional image, not an explicit moral.
 
+For very short page_count values, compress the four-act shape instead of adding extra pages: page_count 1 should show a tiny complete emotional turn in one scene; page_count 2 should use problem/setup on page 1 and choice/recovery on page 2; page_count 3 or 4 should combine rising action and climax in the middle page(s). Adjust per-page event density to fit the requested count exactly.
+
 Default ratio guidance (scaled to page_count, override only if an age module specifies otherwise):
 - Setup: ~15–20%
 - Rising action (including failure beats): ~25–30%
@@ -67,7 +69,7 @@ Default ratio guidance (scaled to page_count, override only if an age module spe
 Hard constraint: the total Rising-action + Climax pages (the "tension" portion) MUST NOT exceed 60% of page_count. Specifically, an unbroken sequence of failure/frustration beats targeting young readers (ages 3–8) must not span more than ~25% of total pages without a hopeful pivot. If the inciting problem requires more attempts, interleave a brief recovery beat (a comfort moment, a reframing dialogue with a caregiver, a glimpse of an emerging clue) rather than chaining failures.
 
 ## Character budget
-Before writing, calculate: (plot-driving characters) × 4 ≤ page_count. If over budget, merge two characters or demote one to background presence (may appear in illustrations or atmosphere but does not make plot-driving decisions).
+Before writing, calculate: (plot-driving characters) × 4 ≤ page_count. For very short page_count values, use one plot-driving protagonist only; keep all other characters as supporting presences. If over budget, merge two characters or demote one to background presence (may appear in illustrations or atmosphere but does not make plot-driving decisions).
 
 ## Illustration handling
 Apply the chosen style preset (named in the user prompt's style_preset parameter; see style_guide.txt for the preset library). Set image_style to the preset's full prefix string verbatim. The 2–4 sentence scene description appended after the prefix must remain compatible with the preset and must cover: location + time of day; the focal character's emotion + facial expression + body language; the present action; at least 3 concrete props; lighting + color mood within the preset's palette; one camera framing note (wide / medium / close-up). Be meaningfully different on every page. Include NO on-image text, watermark, logo, caption, speech bubble, or typography.

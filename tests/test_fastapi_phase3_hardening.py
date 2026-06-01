@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+os.environ.setdefault("MORETALE_STORY_PAGE_COUNT", "3")
+
 try:
     from tests.asgi_test_client import ASGITestClient as TestClient
 except ModuleNotFoundError:  # pragma: no cover
@@ -83,6 +85,7 @@ class TestFastAPIServerPhase3Hardening(unittest.TestCase):
                 "MORETALE_THEME_MAX_LEN": "120",
                 "MORETALE_EXTRA_PROMPT_MAX_LEN": "500",
                 "MORETALE_CHILD_NAME_MAX_LEN": "40",
+                "MORETALE_STORY_PAGE_COUNT": "3",
                 "MORETALE_ALLOWED_STORY_MODELS": "gemini-2.5-flash",
                 "MORETALE_ALLOWED_TTS_MODELS": "gemini-2.5-flash-preview-tts",
                 "MORETALE_ALLOWED_ILLUSTRATION_MODELS": "gemini-2.5-flash-image",
@@ -128,7 +131,8 @@ class TestFastAPIServerPhase3Hardening(unittest.TestCase):
                 )
 
     def test_x_request_id_header_on_success_and_error(self) -> None:
-        success_response = self.client.get("/healthz")
+        with patch("app.main.run_health_checks", return_value=(200, {"status": "ok"})):
+            success_response = self.client.get("/health")
         self.assertEqual(success_response.status_code, 200)
         self.assertTrue(success_response.headers.get("X-Request-ID"))
 
