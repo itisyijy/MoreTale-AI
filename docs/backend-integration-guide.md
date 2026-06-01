@@ -7,7 +7,7 @@
 - Swagger UI: `https://moretale-backend.onrender.com/swagger-ui/index.html#/`
 - OpenAPI JSON: `https://moretale-backend.onrender.com/v3/api-docs`
 - 로컬 스냅샷: `docs/moretale-backend-openapi.json`
-- 확인일: 2026-05-17
+- 문서 정리일: 2026-06-02
 
 OpenAPI spec은 Springdoc 기본 경로인 `/v3/api-docs`에서 직접 접근 가능하다. Swagger UI initializer는 `/v3/api-docs/swagger-config`를 사용한다.
 
@@ -94,7 +94,7 @@ Response envelope: `ApiResponseStoryGenerateResponse`
 }
 ```
 
-AI 서버의 `app.schemas.story.StoryGenerateRequest`와 `StoryGenerateResponse`는 이 camelCase 계약을 기준으로 맞춘다. `primaryLanguage`, `secondaryLanguage`는 backend 예시에 맞춰 `ko`, `vi`, `en` 같은 lowercase ISO 코드로 정규화한다. 추가로 `GET /api/stories/init` 응답에 있는 `familyStructure`, `customFamilyStructure`, `childNationality`, `parentCountry`는 AI 프롬프트 보강용 optional 필드로 받을 수 있다.
+AI 서버의 `app.schemas.story.StoryGenerateRequest`와 `StoryGenerateResponse`는 이 camelCase 계약을 기준으로 맞춘다. `primaryLanguage`, `secondaryLanguage`는 backend 예시에 맞춰 `ko`, `vi`, `en` 같은 lowercase ISO 코드로 정규화한다. 추가로 `GET /api/stories/init` 응답에 있는 `familyStructure`, `customFamilyStructure`, `childNationality`, `parentCountry`, `gender`, `interest`는 AI 프롬프트 보강용 optional 필드로 받을 수 있다.
 
 ## TTS Contract
 
@@ -175,20 +175,9 @@ backend-to-AI 연동의 기준 endpoint는 `/internal/ai/story/jobs`다.
 
 ## Page Count and Slide Order
 
-Story page count는 backend 입력값으로 받지 않는다. AI가 reader profile을 기준으로 내부 정책에 따라 정한다.
+Story page count는 backend 입력값으로 받지 않는다. AI 서버의 `MORETALE_STORY_PAGE_COUNT` 환경변수로 고정하며, 허용 범위는 `1`부터 `32`까지다.
 
-현재 backend `ageGroup` 기준:
-
-| ageGroup | pageCount |
-|---|---:|
-| `AGE_0_2` | 8 |
-| `AGE_3_4` | 12 |
-| `AGE_5_6` | 16 |
-| `AGE_7_8` | 24 |
-| `AGE_9_10` | 32 |
-| `AGE_10_PLUS` | 32 |
-
-`ageGroup`이 없으면 `childAge`로 같은 bucket을 계산하고, 둘 다 없으면 age 5 기준인 16 pages를 사용한다.
+`ageGroup`과 `childAge`는 페이지 수를 결정하지 않고, 프롬프트의 연령 적합성 조정에만 사용한다.
 
 AI 내부 `Story.pages[].page_number`는 generation/model layer에서 1-based를 유지한다. Backend contract로 반환하는 `slides[].order`는 DB 저장 기준에 맞춰 **0-based**로 변환한다.
 
@@ -205,6 +194,7 @@ AI side:
 
 ```env
 MORETALE_API_KEY=...
+MORETALE_STORY_PAGE_COUNT=32
 MORETALE_STORAGE_BACKEND=gcs
 MORETALE_GCS_BUCKET={asset-bucket}
 MORETALE_GCS_KEY_PREFIX=generated
@@ -227,6 +217,6 @@ Spring에 전달하는 `imageUrl`, `audioUrlKr`, `audioUrlNative`, `quizJsonUrl`
 - [x] Story slide `order`는 backend contract에서 0-based로 결정
 - [x] Backend-to-AI story job은 text + image + TTS bundle 생성으로 결정
 - [x] Story bundle asset 실패 시 전체 AI job failed 처리로 결정
-- [x] Story page count는 backend 입력 없이 AI 내부 age policy로 결정
+- [x] Story page count는 backend 입력 없이 AI 서버 환경변수로 결정
 - [ ] 결정된 방식에 맞춰 backend env/config 추가
 - [ ] 실제 staging JWT/API key로 end-to-end 호출 검증

@@ -32,10 +32,13 @@ pip install -r requirements.txt
 ### 2) 환경변수
 
 ```env
+MORETALE_STORY_PAGE_COUNT=32
 GEMINI_STORY_API_KEY=YOUR_STORY_API_KEY
 GEMINI_TTS_API_KEY=YOUR_TTS_API_KEY
 NANO_BANANA_KEY=YOUR_ILLUSTRATION_API_KEY
 ```
+
+`MORETALE_STORY_PAGE_COUNT`는 필수값이며 `1`부터 `32` 사이의 정수만 허용됩니다.
 
 ### 3) 동화 생성
 
@@ -149,6 +152,7 @@ python generators/illustration/illustration_generator.py \
 - `prompts/style_guide.txt`는 항상 시스템 프롬프트에 포함됨
 - `--include_style_guide` (선택): 하위호환용 no-op 옵션
 - `--model_name` (선택, 기본 `gemini-2.5-flash`): 스토리 모델
+- `MORETALE_STORY_PAGE_COUNT` 환경변수: 생성할 페이지 수
 - `--enable_tts` (선택): TTS 생성 활성화
 - `--enable_critic` (선택): critic agent 품질 루프 활성화
 - `--critic_model` (선택, 기본 `gemini-2.5-flash`)
@@ -179,7 +183,7 @@ python generators/illustration/illustration_generator.py \
 - `main_character_design`
 - `illustration_prefix` (선택)
 - `cover_illustration_prompt` (선택)
-- `pages` (정확히 32개)
+- `pages` (`MORETALE_STORY_PAGE_COUNT` 값과 동일)
   - `page_number`
   - `text_primary`
   - `text_secondary`
