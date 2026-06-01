@@ -314,17 +314,34 @@ def map_story_to_generate_response(
     page_assets: PageAssetUrlMap | None = None,
 ) -> StoryGenerateResponse:
     page_assets = page_assets or {}
-    slides = [
-        GeneratedSlide(
-            order=page.page_number - 1,
-            text_kr=page.text_primary,
-            text_native=page.text_secondary,
-            image_url=page_assets.get(page.page_number, {}).get("image_url"),
-            audio_url_kr=page_assets.get(page.page_number, {}).get("audio_url_kr"),
-            audio_url_native=page_assets.get(page.page_number, {}).get("audio_url_native"),
+    cover_assets = page_assets.get(0, {})
+    has_cover_slide = bool(cover_assets.get("image_url"))
+    slides: list[GeneratedSlide] = []
+
+    if has_cover_slide:
+        slides.append(
+            GeneratedSlide(
+                order=0,
+                text_kr="",
+                text_native="",
+                image_url=cover_assets.get("image_url"),
+                audio_url_kr=None,
+                audio_url_native=None,
+            )
         )
-        for page in story.pages
-    ]
+
+    for page in story.pages:
+        assets = page_assets.get(page.page_number, {})
+        slides.append(
+            GeneratedSlide(
+                order=page.page_number if has_cover_slide else page.page_number - 1,
+                text_kr=page.text_primary,
+                text_native=page.text_secondary,
+                image_url=assets.get("image_url"),
+                audio_url_kr=assets.get("audio_url_kr"),
+                audio_url_native=assets.get("audio_url_native"),
+            )
+        )
 
     # Always return lowercase ISO codes — backend Swagger examples use ko/vi/en.
     primary_iso = to_story_iso(req.primary_language) or to_story_iso(story.primary_language)
