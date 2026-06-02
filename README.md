@@ -22,32 +22,52 @@ Backend와 연동하여 다문화 가정 어린이와 부모가 함께 사용할
 <div align="center">
 
 <a href="https://www.python.org/">
-<img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=Python&logoColor=white" alt="Python 3.12"/>
+  <kbd>
+    <img src="./README/python.png" alt="Python 3.12" height="60"/>
+  </kbd>
 </a>
+
 <a href="https://fastapi.tiangolo.com/">
-<img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=FastAPI&logoColor=white" alt="FastAPI"/>
+  <kbd>
+    <img src="./README/fastapi.png" alt="FastAPI"  height="60"/>
+  </kbd>
 </a>
+
 <a href="https://www.uvicorn.org/">
-<img src="https://img.shields.io/badge/Uvicorn-499848?style=flat-square&logo=Gunicorn&logoColor=white" alt="Uvicorn"/>
+  <kbd>
+    <img src="./README/uvicorn.png" alt="Uvicorn"  height="60"/>
+  </kbd>
 </a>
+
 <a href="https://docs.pydantic.dev/">
-<img src="https://img.shields.io/badge/Pydantic-E92063?style=flat-square&logo=Pydantic&logoColor=white" alt="Pydantic"/>
+  <kbd>
+    <img src="./README/pydantic.png" alt="Pydantic"  height="60"/>
+  </kbd>
 </a>
+
 <a href="https://ai.google.dev/">
-<img src="https://img.shields.io/badge/Google%20GenAI-4285F4?style=flat-square&logo=Google&logoColor=white" alt="Google GenAI"/>
+  <kbd>
+    <img src="./README/gemini.png" alt="Google Gemini"  height="60"/>
+  </kbd>
 </a>
+
 <a href="https://cloud.google.com/storage">
-<img src="https://img.shields.io/badge/Cloud%20Storage-AECBFA?style=flat-square&logo=GoogleCloud&logoColor=black" alt="Google Cloud Storage"/>
+  <kbd>
+    <img src="./README/gcp.png" alt="Google Cloud Platform"  height="60"/>
+  </kbd>
 </a>
+
 <a href="https://www.docker.com/">
-<img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=Docker&logoColor=white" alt="Docker"/>
+  <kbd>
+<img src="./README/docker.png" alt="Docker"  height="60"/>
+  </kbd>
 </a>
 
 </div>
 
 <div align="center">
 
-<h4>Python 3.12 | FastAPI | Uvicorn | Pydantic | Google GenAI | Google Cloud Storage | Docker</h4>
+<h4>Python 3.12 | FastAPI | Uvicorn | Pydantic | Google Gemini | Google Cloud Platform | Docker</h4>
 
 </div>
 
