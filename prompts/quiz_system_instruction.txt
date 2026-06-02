@@ -18,6 +18,7 @@ Use "1", "2", "3", "4" as choice_id values (not letters). The correct answer's c
 - Use the primary language as the main question language.
 - Naturally include secondary-language words in some question text, while keeping the question understandable from the primary language.
 - question_text must be a complete grammatical sentence ending with a question mark.
+- Do not include numbering labels in question_text, such as "(문제1)", "(문제 1)", "문제 1:", or "Q1".
 - For VOCABULARY questions: test the word in story context. The correct answer explains its meaning as used in the story. Distractors should be plausible alternative meanings.
 - For STORY questions: make distractors plausible but clearly wrong from the story. For emotion questions, include the most instinctively expected emotion as a distractor if it differs from the actual emotion, so the question rewards close reading.
 - For REFLECTION questions: anchor the question in a specific story moment (cite the page or character action in the question text). Ask what the reader would do, what the character should do, or which response best matches the value the story embodied. Avoid abstract decontextualized moral questions like "친구는 왜 중요한가요?" — instead, "지우가 릴리와 다른 점을 발견했을 때 무엇을 했고, 그 행동이 좋은 이유는?" The explanation should reference the story event, not deliver a generic lecture.

@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -9,6 +10,21 @@ QuizQuestionType = Literal["multiple_choice"]
 QuizSkill = Literal["VOCABULARY", "STORY"]
 
 _VALID_CHOICE_IDS = {"1", "2", "3", "4"}
+_QUESTION_NUMBER_LABEL = (
+    r"(?:(?:문제|문항)\s*\d+\s*(?:번)?|(?:question|q)\s*#?\s*\d+)"
+)
+_QUESTION_NUMBER_PREFIX_RES = (
+    re.compile(
+        rf"^\s*(?:[\(\[（［]\s*)?{_QUESTION_NUMBER_LABEL}\s*(?:[\)\]）］])?"
+        r"\s*[:：.\-–—]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(r"^\s*\d+\s*[\.\)]\s*"),
+)
+_QUESTION_NUMBER_SUFFIX_RES = (
+    re.compile(rf"\s*[\(\[（［]\s*{_QUESTION_NUMBER_LABEL}\s*[\)\]）］]\s*$", re.IGNORECASE),
+    re.compile(rf"\s+{_QUESTION_NUMBER_LABEL}\s*[:：.]?\s*$", re.IGNORECASE),
+)
 
 
 class QuizChoice(BaseModel):
@@ -58,6 +74,18 @@ class QuizQuestion(BaseModel):
         normalized = value.strip()
         if not normalized:
             raise ValueError("question_id must not be empty")
+        return normalized
+
+    @field_validator("question_text")
+    @classmethod
+    def normalize_question_text(cls, value: str) -> str:
+        normalized = value.strip()
+        for pattern in _QUESTION_NUMBER_PREFIX_RES:
+            normalized = pattern.sub("", normalized).strip()
+        for pattern in _QUESTION_NUMBER_SUFFIX_RES:
+            normalized = pattern.sub("", normalized).strip()
+        if not normalized:
+            raise ValueError("question_text must not be empty")
         return normalized
 
     @field_validator("source_page_numbers")
