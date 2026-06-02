@@ -8,6 +8,7 @@ from app.schemas.story import (
     FamilyStructure,
     Gender,
     GeneratedSlide,
+    GeneratedSlideVocabulary,
     LanguageProficiency,
     StoryGenerateRequest,
     StoryGenerateResponse,
@@ -308,6 +309,21 @@ def map_generate_request_to_pipeline(
     )
 
 
+def _map_page_vocabulary(page_number: int, vocabulary: list) -> list[GeneratedSlideVocabulary]:
+    items: list[GeneratedSlideVocabulary] = []
+    for index, entry in enumerate(vocabulary, start=1):
+        items.append(
+            GeneratedSlideVocabulary(
+                entry_id=entry.entry_id or f"page-{page_number:02d}-word-{index:02d}",
+                primary_word=entry.primary_word,
+                secondary_word=entry.secondary_word,
+                primary_definition=entry.primary_definition,
+                secondary_definition=entry.secondary_definition,
+            )
+        )
+    return items
+
+
 def map_story_to_generate_response(
     story: Story,
     req: StoryGenerateRequest,
@@ -322,6 +338,7 @@ def map_story_to_generate_response(
             image_url=page_assets.get(page.page_number, {}).get("image_url"),
             audio_url_kr=page_assets.get(page.page_number, {}).get("audio_url_kr"),
             audio_url_native=page_assets.get(page.page_number, {}).get("audio_url_native"),
+            vocabulary=_map_page_vocabulary(page.page_number, page.vocabulary),
         )
         for page in story.pages
     ]

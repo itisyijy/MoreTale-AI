@@ -3,12 +3,17 @@ import unittest
 from unittest.mock import patch
 
 from app.core.config import get_settings
-from app.schemas.story import GeneratedSlide, StoryGenerateRequest, StoryGenerateResponse
+from app.schemas.story import (
+    GeneratedSlide,
+    GeneratedSlideVocabulary,
+    StoryGenerateRequest,
+    StoryGenerateResponse,
+)
 from app.services.backend_mapper import (
     map_generate_request_to_pipeline,
     map_story_to_generate_response,
 )
-from generators.story.story_model import Page, Story
+from generators.story.story_model import Page, Story, VocabularyEntry
 
 
 class TestBackendIntegrationContract(unittest.TestCase):
@@ -153,6 +158,15 @@ class TestBackendIntegrationContract(unittest.TestCase):
                     image_url=None,
                     audio_url_kr=None,
                     audio_url_native=None,
+                    vocabulary=[
+                        GeneratedSlideVocabulary(
+                            entry_id="page-01-word-01",
+                            primary_word="우주복",
+                            secondary_word="space suit",
+                            primary_definition="우주에서 입는 특별한 옷",
+                            secondary_definition="special clothes worn in space",
+                        )
+                    ],
                 )
             ],
         )
@@ -161,6 +175,36 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertEqual(payload["childName"], "Mina")
         self.assertEqual(payload["slides"][0]["textKr"], "안녕")
         self.assertEqual(payload["slides"][0]["textNative"], "hello")
+        self.assertEqual(
+            payload["slides"][0]["vocabulary"][0]["entryId"],
+            "page-01-word-01",
+        )
+        self.assertEqual(payload["slides"][0]["vocabulary"][0]["primaryWord"], "우주복")
+        self.assertEqual(
+            payload["slides"][0]["vocabulary"][0]["secondaryDefinition"],
+            "special clothes worn in space",
+        )
+
+    def test_story_generate_response_defaults_slide_vocabulary_to_empty_array(self) -> None:
+        response = StoryGenerateResponse(
+            title="Mina's Adventure",
+            child_name="Mina",
+            primary_language="ko",
+            secondary_language="en",
+            slides=[
+                GeneratedSlide(
+                    order=0,
+                    text_kr="안녕",
+                    text_native="hello",
+                    image_url=None,
+                    audio_url_kr=None,
+                    audio_url_native=None,
+                )
+            ],
+        )
+
+        payload = response.model_dump(mode="json", by_alias=True)
+        self.assertEqual(payload["slides"][0]["vocabulary"], [])
 
     def test_story_response_language_codes_are_lowercase_iso(self) -> None:
         story = Story(
@@ -234,6 +278,71 @@ class TestBackendIntegrationContract(unittest.TestCase):
         )
 
         self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
+
+    def test_story_response_preserves_page_vocabulary_on_matching_slide(self) -> None:
+        story = Story(
+            title_primary="제목",
+            title_secondary="Title",
+            author_name="Mina",
+            primary_language="Korean",
+            secondary_language="Vietnamese",
+            image_style="storybook",
+            main_character_design="child",
+            pages=[
+                Page(
+                    page_number=1,
+                    text_primary="민아는 우주복을 입었어요.",
+                    text_secondary="Mina mặc bộ đồ phi hành gia.",
+                    illustration_prompt="Scene 1",
+                    vocabulary=[
+                        VocabularyEntry(
+                            entry_id="page-01-word-01",
+                            primary_word="우주복",
+                            secondary_word="bộ đồ phi hành gia",
+                            primary_definition="우주에서 입는 특별한 옷",
+                            secondary_definition="áo đặc biệt mặc khi bay vào không gian",
+                        )
+                    ],
+                ),
+                Page(
+                    page_number=2,
+                    text_primary="달에 도착했어요.",
+                    text_secondary="Đã đến mặt trăng.",
+                    illustration_prompt="Scene 2",
+                    vocabulary=[
+                        VocabularyEntry(
+                            entry_id=None,
+                            primary_word="달",
+                            secondary_word="mặt trăng",
+                            primary_definition="밤하늘에 뜨는 둥근 구슬",
+                            secondary_definition="quả cầu tròn trên bầu trời đêm",
+                        )
+                    ],
+                ),
+            ],
+        )
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "space",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "vi",
+            }
+        )
+
+        payload = map_story_to_generate_response(story, request).model_dump(
+            mode="json",
+            by_alias=True,
+        )
+
+        self.assertEqual(payload["slides"][0]["vocabulary"][0]["entryId"], "page-01-word-01")
+        self.assertEqual(payload["slides"][0]["vocabulary"][0]["primaryWord"], "우주복")
+        self.assertEqual(
+            payload["slides"][0]["vocabulary"][0]["secondaryDefinition"],
+            "áo đặc biệt mặc khi bay vào không gian",
+        )
+        self.assertEqual(payload["slides"][1]["vocabulary"][0]["entryId"], "page-02-word-01")
+        self.assertEqual(payload["slides"][1]["vocabulary"][0]["secondaryWord"], "mặt trăng")
 
 
 if __name__ == "__main__":
