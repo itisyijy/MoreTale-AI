@@ -105,8 +105,8 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
 | Framework  | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=FastAPI&logoColor=white) |
 | ASGI Server | ![Uvicorn](https://img.shields.io/badge/Uvicorn-499848?style=flat-square&logo=Gunicorn&logoColor=white) |
 | Schema     | ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=flat-square&logo=Pydantic&logoColor=white) |
-| AI SDK     | ![Google GenAI](https://img.shields.io/badge/Google%20GenAI-4285F4?style=flat-square&logo=Google&logoColor=white) |
-| Storage    | ![Google Cloud Storage](https://img.shields.io/badge/Cloud%20Storage-AECBFA?style=flat-square&logo=GoogleCloud&logoColor=black) |
+| AI SDK     | ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-4285F4?style=flat-square&logo=GoogleGemini&logoColor=white) |
+| Cloud    | ![Google Cloud Platform](https://img.shields.io/badge/Cloud%20Storage-AECBFA?style=flat-square&logo=GoogleCloud&logoColor=black) |
 | Deployment | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=Docker&logoColor=white) |
 
 ---
@@ -159,9 +159,6 @@ CLI 사용 가이드는 `cli/README.md`를 참고하세요.
 - 서버 재시작 시 `running` 상태 Job 자동 복구
 
 ### 🧩 Current Implementation Status
-
-> GitHub main 기준 현재 구현된 서버 범위입니다.
-
 - Phase 1: 서버 스캐폴딩, 비동기 job, 상태/결과 API (라우트 핸들러 전체 async)
 - Phase 2: TTS/일러스트/퀴즈 옵션 처리, 부분 실패 표현
 - Phase 3-Lite: 운영 하드닝
