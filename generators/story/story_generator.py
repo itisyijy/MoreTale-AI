@@ -1,5 +1,4 @@
 import os
-import re
 from pathlib import Path
 from typing import Optional
 
@@ -17,10 +16,6 @@ from generators.story.story_prompts import StoryPrompt
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
-
-
-def _slugify_identifier(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
 
 
 class StoryGenerator:
@@ -129,18 +124,5 @@ class StoryGenerator:
     @staticmethod
     def _populate_vocabulary_fields(story: Story) -> None:
         for page in story.pages:
-            seen_ids: set[str] = set()
             for index, entry in enumerate(page.vocabulary, start=1):
-                raw_id = (
-                    entry.entry_id
-                    or _slugify_identifier(entry.primary_word)
-                    or _slugify_identifier(entry.secondary_word)
-                    or f"word-{index:02d}"
-                )
-                candidate = raw_id
-                suffix = 2
-                while candidate in seen_ids:
-                    candidate = f"{raw_id}-{suffix}"
-                    suffix += 1
-                entry.entry_id = candidate
-                seen_ids.add(candidate)
+                entry.entry_id = f"page-{page.page_number:02d}-word-{index:02d}"
