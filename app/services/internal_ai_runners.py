@@ -45,6 +45,7 @@ def run_story_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any
         output_dir_factory=lambda _story, _story_model: get_run_dir(job_id),
         strict_assets=True,
     )
+    _upload_if_file(pipeline_result.story_json_path)
     response = map_story_to_generate_response(
         pipeline_result.story,
         request,
