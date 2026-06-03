@@ -17,6 +17,7 @@ class TestStoryPrompt(unittest.TestCase):
             theme="Friendship",
             extra_prompt="Include a dragon.",
             page_count=16,
+            character_bible_prompt="CHARACTER CONSISTENCY LOCK: fixed character.",
         )
 
         self.assertIn("children's book author", system_instruction)
@@ -36,6 +37,8 @@ class TestStoryPrompt(unittest.TestCase):
         self.assertIn("primary_language and secondary_language fields", user_prompt)
         self.assertIn("vocabulary array", user_prompt)
         self.assertIn("primary_definition", system_instruction)
+        self.assertIn("Main Character Visual Bible", user_prompt)
+        self.assertIn("CHARACTER CONSISTENCY LOCK: fixed character.", user_prompt)
 
     def test_style_guide_is_applied_even_when_flag_is_false(self):
         prompt = StoryPrompt(include_style_guide=False)

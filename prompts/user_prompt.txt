@@ -21,6 +21,15 @@ Proficiency values: native / fluent / intermediate / beginner. If unknown, assum
 - Style preset: {style_preset}
   (One of the presets defined in style_guide.txt. If blank, choose a preset whose tone matches the theme — do not blindly default to a high-saturation preset for quiet or reflective stories.)
 
+## Main Character Visual Bible
+{character_bible_prompt}
+
+Use this visual bible as the fixed source of truth for the protagonist's appearance.
+Set main_character_design to a concise version of this same fixed design. Do not invent
+conflicting hair, facial, outfit, age, ethnicity, or body-proportion details later.
+Every page's illustration_prompt must preserve the same protagonist design; only pose,
+expression, action, camera angle, and scene context may change.
+
 ## Story Theme & Calibration
 - Theme: {theme}
   (If blank, choose a fresh, age-appropriate theme with a concrete, solvable problem.)

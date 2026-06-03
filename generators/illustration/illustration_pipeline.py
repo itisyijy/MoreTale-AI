@@ -3,12 +3,16 @@ from typing import Any
 
 from google import genai
 
+from generators.character.character_model import CharacterBible
 from generators.story.story_model import Story
 
 from .illustration_cover_prompt import build_cover_prompt
 from .illustration_env import resolve_api_key
 from .illustration_image_client import ImageGenerationClient
-from .illustration_prompt_builder import build_page_prompt
+from .illustration_prompt_builder import (
+    build_character_consistency_lock,
+    build_page_prompt,
+)
 from .illustration_storage import (
     find_existing_cover_asset,
     find_existing_page_asset,
@@ -45,15 +49,35 @@ class IllustrationGenerator:
             return Story.model_validate_json(file.read())
 
     @staticmethod
-    def _build_page_prompt(story: Story, page) -> tuple[str, str]:
-        return build_page_prompt(story=story, page=page)
+    def _build_page_prompt(
+        story: Story,
+        page,
+        character_bible: CharacterBible | None = None,
+    ) -> tuple[str, str]:
+        return build_page_prompt(
+            story=story,
+            page=page,
+            character_bible=character_bible,
+        )
 
     @staticmethod
-    def _build_cover_prompt(story: Story) -> str:
+    def _build_cover_prompt(
+        story: Story,
+        character_bible: CharacterBible | None = None,
+    ) -> str:
         prompt = (story.cover_illustration_prompt or "").strip()
         if prompt:
-            return prompt
-        return build_cover_prompt(story)
+            cover_prompt = prompt
+        else:
+            cover_prompt = build_cover_prompt(story)
+
+        character_lock = build_character_consistency_lock(
+            story=story,
+            character_bible=character_bible,
+        )
+        if character_lock and character_lock not in cover_prompt:
+            return f"{character_lock}\n\n{cover_prompt}"
+        return cover_prompt
 
     def _generate_image_bytes(
         self,
@@ -75,6 +99,7 @@ class IllustrationGenerator:
         output_dir: str,
         skip_existing: bool = True,
         generate_cover: bool = True,
+        character_bible: CharacterBible | None = None,
     ) -> dict[str, Any]:
         illustration_dir = Path(output_dir) / "illustrations"
         illustration_dir.mkdir(parents=True, exist_ok=True)
@@ -106,7 +131,11 @@ class IllustrationGenerator:
                     continue
 
             try:
-                prompt, prompt_mode = self._build_page_prompt(story=story, page=page)
+                prompt, prompt_mode = self._build_page_prompt(
+                    story=story,
+                    page=page,
+                    character_bible=character_bible,
+                )
                 image_bytes, mime_type = self._generate_image_bytes(prompt=prompt)
                 extension = pick_image_extension(mime_type)
                 image_path = illustration_dir / f"page_{page_number:02d}{extension}"
@@ -166,7 +195,10 @@ class IllustrationGenerator:
 
             if cover_status == "not_requested":
                 try:
-                    prompt = self._build_cover_prompt(story=story)
+                    prompt = self._build_cover_prompt(
+                        story=story,
+                        character_bible=character_bible,
+                    )
                     image_bytes, mime_type = self._generate_image_bytes(
                         prompt=prompt,
                         aspect_ratio=self.cover_aspect_ratio,

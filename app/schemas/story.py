@@ -358,6 +358,18 @@ class StoryGenerateRequest(BaseModel):
         return normalize_story_language_code(value)
 
 
+class GeneratedSlideVocabulary(BaseModel):
+    """Vocabulary item included in a backend story slide response."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    entry_id: str
+    primary_word: str
+    secondary_word: str
+    primary_definition: str
+    secondary_definition: str
+
+
 class GeneratedSlide(BaseModel):
     """Single slide in the backend's StoryGenerateResponse."""
 
@@ -369,6 +381,7 @@ class GeneratedSlide(BaseModel):
     text_native: str
     audio_url_kr: str | None = None
     audio_url_native: str | None = None
+    vocabulary: list[GeneratedSlideVocabulary] = Field(default_factory=list)
 
 
 class StoryGenerateResponse(BaseModel):

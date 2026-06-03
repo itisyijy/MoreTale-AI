@@ -233,7 +233,13 @@ class TestInternalAIStoryRunner(unittest.TestCase):
                         / "02_english"
                         / f"page_{page_number:02d}_secondary.wav"
                     ).write_bytes(b"RIFF")
-                return SimpleNamespace(story=story, output_dir=output_dir)
+                story_json_path = output_dir / "story_gemini-2.5-flash.json"
+                story_json_path.write_text(story.model_dump_json(indent=4), encoding="utf-8")
+                return SimpleNamespace(
+                    story=story,
+                    output_dir=output_dir,
+                    story_json_path=story_json_path,
+                )
 
             with patch(
                 "app.services.internal_ai_runners.run_story_generation_pipeline",
@@ -262,8 +268,6 @@ class TestInternalAIStoryRunner(unittest.TestCase):
         )
         self.assertEqual(payload["slides"][0]["textKr"], "")
         self.assertEqual(payload["slides"][0]["textNative"], "")
-        self.assertIsNone(payload["slides"][0]["audioUrlKr"])
-        self.assertIsNone(payload["slides"][0]["audioUrlNative"])
         self.assertEqual(
             payload["slides"][1]["imageUrl"],
             "/static/outputs/story-job-1/illustrations/page_01.png",
@@ -277,7 +281,7 @@ class TestInternalAIStoryRunner(unittest.TestCase):
             "/static/outputs/story-job-1/audio/02_english/page_01_secondary.wav",
         )
 
-    def test_story_job_uploads_assets_to_gcs_when_enabled(self) -> None:
+    def test_story_job_uploads_assets_and_story_json_to_gcs_when_enabled(self) -> None:
         from app.services.internal_ai_runners import run_story_job
 
         with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(
@@ -322,7 +326,13 @@ class TestInternalAIStoryRunner(unittest.TestCase):
                 (
                     output_dir / "audio" / "02_english" / "page_01_secondary.wav"
                 ).write_bytes(b"RIFF")
-                return SimpleNamespace(story=story, output_dir=output_dir)
+                story_json_path = output_dir / "story_gemini-2.5-flash.json"
+                story_json_path.write_text(story.model_dump_json(indent=4), encoding="utf-8")
+                return SimpleNamespace(
+                    story=story,
+                    output_dir=output_dir,
+                    story_json_path=story_json_path,
+                )
 
             with patch(
                 "app.services.internal_ai_runners.run_story_generation_pipeline",
@@ -340,7 +350,12 @@ class TestInternalAIStoryRunner(unittest.TestCase):
                 )
 
         bucket = client_factory.return_value.bucket.return_value
-        self.assertEqual(bucket.blob.call_count, 4)
+        uploaded_object_names = [call.args[0] for call in bucket.blob.call_args_list]
+        self.assertEqual(bucket.blob.call_count, 5)
+        self.assertIn(
+            "generated/story-job-1/story_gemini-2.5-flash.json",
+            uploaded_object_names,
+        )
         self.assertEqual(
             payload["slides"][0]["imageUrl"],
             "https://storage.googleapis.com/moretale-assets/generated/story-job-1/illustrations/cover.png",
@@ -353,6 +368,7 @@ class TestInternalAIStoryRunner(unittest.TestCase):
             payload["slides"][1]["audioUrlKr"],
             "https://storage.googleapis.com/moretale-assets/generated/story-job-1/audio/01_korean/page_01_primary.wav",
         )
+        self.assertNotIn("storyJsonUrl", payload)
 
 
 if __name__ == "__main__":

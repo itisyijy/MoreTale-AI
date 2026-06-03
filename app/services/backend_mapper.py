@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from app.core.languages import resolve_language_name, to_story_iso
 from app.core.config import get_settings
 from app.schemas.story import (
@@ -10,6 +8,7 @@ from app.schemas.story import (
     FamilyStructure,
     Gender,
     GeneratedSlide,
+    GeneratedSlideVocabulary,
     LanguageProficiency,
     StoryGenerateRequest,
     StoryGenerateResponse,
@@ -192,28 +191,7 @@ def _build_extra_prompt(req: StoryGenerateRequest) -> str:
     if profile_lines:
         sections.append("[Profile context]\n" + "\n".join(f"  {l}" for l in profile_lines))
 
-    test_sentence_limit = _resolve_test_max_sentences_per_page()
-    if test_sentence_limit is not None:
-        sections.append(
-            "[Test-only page brevity]\n"
-            f"  This run is using a test page-count setting. Write at most {test_sentence_limit} "
-            "short sentence(s) per page in each language.\n"
-            "  Do not compress multiple story beats into one page. Keep each page to one clear "
-            "scene or action, and distribute setup, conflict, and resolution across the available pages."
-        )
-
     return "\n\n".join(sections)
-
-
-def _resolve_test_max_sentences_per_page() -> int | None:
-    raw = (os.getenv("MORETALE_TEST_MAX_SENTENCES_PER_PAGE") or "").strip()
-    if not raw:
-        return None
-    try:
-        value = int(raw)
-    except ValueError:
-        return None
-    return value if value > 0 else None
 
 
 def _build_theme(req: StoryGenerateRequest) -> str:
@@ -331,39 +309,52 @@ def map_generate_request_to_pipeline(
     )
 
 
+def _map_page_vocabulary(page_number: int, vocabulary: list) -> list[GeneratedSlideVocabulary]:
+    items: list[GeneratedSlideVocabulary] = []
+    for index, entry in enumerate(vocabulary, start=1):
+        items.append(
+            GeneratedSlideVocabulary(
+                entry_id=entry.entry_id or f"page-{page_number:02d}-word-{index:02d}",
+                primary_word=entry.primary_word,
+                secondary_word=entry.secondary_word,
+                primary_definition=entry.primary_definition,
+                secondary_definition=entry.secondary_definition,
+            )
+        )
+    return items
+
+
 def map_story_to_generate_response(
     story: Story,
     req: StoryGenerateRequest,
     page_assets: PageAssetUrlMap | None = None,
+    cover_image_url: str | None = None,
 ) -> StoryGenerateResponse:
     page_assets = page_assets or {}
-    cover_assets = page_assets.get(0, {})
-    has_cover_slide = bool(cover_assets.get("image_url"))
-    slides: list[GeneratedSlide] = []
-
-    if has_cover_slide:
-        slides.append(
+    slides = [
+        GeneratedSlide(
+            order=page.page_number if cover_image_url else page.page_number - 1,
+            text_kr=page.text_primary,
+            text_native=page.text_secondary,
+            image_url=page_assets.get(page.page_number, {}).get("image_url"),
+            audio_url_kr=page_assets.get(page.page_number, {}).get("audio_url_kr"),
+            audio_url_native=page_assets.get(page.page_number, {}).get("audio_url_native"),
+            vocabulary=_map_page_vocabulary(page.page_number, page.vocabulary),
+        )
+        for page in story.pages
+    ]
+    if cover_image_url:
+        slides.insert(
+            0,
             GeneratedSlide(
                 order=0,
                 text_kr="",
                 text_native="",
-                image_url=cover_assets.get("image_url"),
+                image_url=cover_image_url,
                 audio_url_kr=None,
                 audio_url_native=None,
-            )
-        )
-
-    for page in story.pages:
-        assets = page_assets.get(page.page_number, {})
-        slides.append(
-            GeneratedSlide(
-                order=page.page_number if has_cover_slide else page.page_number - 1,
-                text_kr=page.text_primary,
-                text_native=page.text_secondary,
-                image_url=assets.get("image_url"),
-                audio_url_kr=assets.get("audio_url_kr"),
-                audio_url_native=assets.get("audio_url_native"),
-            )
+                vocabulary=[],
+            ),
         )
 
     # Always return lowercase ISO codes — backend Swagger examples use ko/vi/en.

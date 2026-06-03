@@ -1,5 +1,4 @@
 import os
-import re
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +6,7 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+from generators.character.character_model import CharacterBible
 from generators.illustration.illustration_cover_prompt import build_cover_prompt
 from generators.illustration.illustration_prompt_utils import (
     build_illustration_prefix,
@@ -17,10 +17,6 @@ from generators.story.story_prompts import StoryPrompt
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
-
-
-def _slugify_identifier(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
 
 
 class StoryGenerator:
@@ -50,6 +46,7 @@ class StoryGenerator:
         style_preset: str = "vibrant_storybook",
         page_count: int | None = None,
         tone_hint: str = "",
+        character_bible: CharacterBible | None = None,
         gender: Optional[str] = None,
         family_situation: Optional[str] = None,
         interest: Optional[str] = None,
@@ -73,6 +70,9 @@ class StoryGenerator:
             style_preset=style_preset,
             page_count=page_count,
             tone_hint=tone_hint,
+            character_bible_prompt=(
+                character_bible.art_consistency_prompt if character_bible else ""
+            ),
             gender=gender,
             family_situation=family_situation,
             interest=interest,
@@ -96,6 +96,8 @@ class StoryGenerator:
                 story = Story.model_validate_json(response.text)
 
             self._populate_illustration_fields(story)
+            if character_bible is not None:
+                self._apply_character_bible_fields(story, character_bible)
             self._populate_vocabulary_fields(story)
             return story
 
@@ -127,20 +129,28 @@ class StoryGenerator:
         story.cover_illustration_prompt = build_cover_prompt(story)
 
     @staticmethod
+    def _apply_character_bible_fields(
+        story: Story,
+        character_bible: CharacterBible,
+    ) -> None:
+        story.main_character_design = character_bible.fixed_design
+        story.illustration_prefix = build_illustration_prefix(
+            story.image_style,
+            story.main_character_design,
+        )
+
+        for page in story.pages:
+            scene = (
+                (page.illustration_scene_prompt or "").strip()
+                or (page.illustration_prompt or "").strip()
+            )
+            if scene:
+                page.illustration_prompt = f"{story.illustration_prefix}, {scene}"
+
+        story.cover_illustration_prompt = build_cover_prompt(story)
+
+    @staticmethod
     def _populate_vocabulary_fields(story: Story) -> None:
         for page in story.pages:
-            seen_ids: set[str] = set()
             for index, entry in enumerate(page.vocabulary, start=1):
-                raw_id = (
-                    entry.entry_id
-                    or _slugify_identifier(entry.primary_word)
-                    or _slugify_identifier(entry.secondary_word)
-                    or f"word-{index:02d}"
-                )
-                candidate = raw_id
-                suffix = 2
-                while candidate in seen_ids:
-                    candidate = f"{raw_id}-{suffix}"
-                    suffix += 1
-                entry.entry_id = candidate
-                seen_ids.add(candidate)
+                entry.entry_id = f"page-{page.page_number:02d}-word-{index:02d}"

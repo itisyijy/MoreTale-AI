@@ -8,6 +8,7 @@ from unittest.mock import patch
 from app.services.generation_pipeline import (
     StoryPipelineRequest,
     build_pipeline_request_from_story_request,
+    generate_character_bible,
     generate_story,
     run_story_generation_pipeline,
 )
@@ -83,6 +84,27 @@ class TestGenerationPipeline(unittest.TestCase):
         self.assertEqual(model, "gemini-2.5-flash")
         self.assertEqual(captured["primary_proficiency"], "native")
         self.assertEqual(captured["secondary_proficiency"], "beginner")
+
+    def test_generate_story_passes_character_bible_to_prompt(self):
+        request = _build_request(child_name="콩이 (Bean)", theme="beans")
+        character_bible = generate_character_bible(request)
+        fake_story = _fake_story()
+        captured: dict[str, object] = {}
+
+        class FakeStoryGenerator:
+            def __init__(self, model_name: str, include_style_guide: bool):
+                self.model_name = model_name
+
+            def generate_story(self, **kwargs):
+                captured.update(kwargs)
+                return fake_story
+
+        with patch("generators.story.story_generator.StoryGenerator", FakeStoryGenerator):
+            story, _model = generate_story(request, character_bible)
+
+        self.assertIs(story, fake_story)
+        self.assertIs(captured["character_bible"], character_bible)
+        self.assertIn("mole under the left eye", character_bible.art_consistency_prompt)
 
     def test_style_guide_flag_is_normalized_to_true(self):
         request = StoryCreateRequest.model_validate(
@@ -309,6 +331,7 @@ class TestGenerationPipeline(unittest.TestCase):
         self.assertIsNone(result.service_errors["quiz"])
         self.assertIsNotNone(result.illustration_result)
         mocked_illustrations.assert_called_once()
+        self.assertIsNotNone(result.character_bible)
 
     def test_pipeline_generates_quiz_when_enabled(self):
         request = _build_request(enable_quiz=True)

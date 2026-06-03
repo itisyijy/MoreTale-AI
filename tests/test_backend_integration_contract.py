@@ -3,12 +3,17 @@ import unittest
 from unittest.mock import patch
 
 from app.core.config import get_settings
-from app.schemas.story import GeneratedSlide, StoryGenerateRequest, StoryGenerateResponse
+from app.schemas.story import (
+    GeneratedSlide,
+    GeneratedSlideVocabulary,
+    StoryGenerateRequest,
+    StoryGenerateResponse,
+)
 from app.services.backend_mapper import (
     map_generate_request_to_pipeline,
     map_story_to_generate_response,
 )
-from generators.story.story_model import Page, Story
+from generators.story.story_model import Page, Story, VocabularyEntry
 
 
 class TestBackendIntegrationContract(unittest.TestCase):
@@ -139,30 +144,48 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertIn("Child nationality: KR", pipeline.extra_prompt)
         self.assertIn("Parent country: VN", pipeline.extra_prompt)
 
-    def test_test_sentence_limit_is_added_only_when_env_is_set(self) -> None:
-        request = StoryGenerateRequest.model_validate(
-            {
-                "prompt": "friendship",
-                "childName": "Mina",
-                "primaryLanguage": "ko",
-                "secondaryLanguage": "en",
-            }
+    def test_story_generate_response_serializes_to_backend_camel_case(self) -> None:
+        response = StoryGenerateResponse(
+            title="Mina's Adventure",
+            child_name="Mina",
+            primary_language="ko",
+            secondary_language="en",
+            slides=[
+                GeneratedSlide(
+                    order=0,
+                    text_kr="안녕",
+                    text_native="hello",
+                    image_url=None,
+                    audio_url_kr=None,
+                    audio_url_native=None,
+                    vocabulary=[
+                        GeneratedSlideVocabulary(
+                            entry_id="page-01-word-01",
+                            primary_word="우주복",
+                            secondary_word="space suit",
+                            primary_definition="우주에서 입는 특별한 옷",
+                            secondary_definition="special clothes worn in space",
+                        )
+                    ],
+                )
+            ],
         )
 
-        pipeline = map_generate_request_to_pipeline(request)
-        self.assertNotIn("Test-only page brevity", pipeline.extra_prompt)
+        payload = response.model_dump(mode="json", by_alias=True)
+        self.assertEqual(payload["childName"], "Mina")
+        self.assertEqual(payload["slides"][0]["textKr"], "안녕")
+        self.assertEqual(payload["slides"][0]["textNative"], "hello")
+        self.assertEqual(
+            payload["slides"][0]["vocabulary"][0]["entryId"],
+            "page-01-word-01",
+        )
+        self.assertEqual(payload["slides"][0]["vocabulary"][0]["primaryWord"], "우주복")
+        self.assertEqual(
+            payload["slides"][0]["vocabulary"][0]["secondaryDefinition"],
+            "special clothes worn in space",
+        )
 
-        with patch.dict(
-            os.environ,
-            {"MORETALE_TEST_MAX_SENTENCES_PER_PAGE": "2"},
-            clear=False,
-        ):
-            pipeline = map_generate_request_to_pipeline(request)
-
-        self.assertIn("Test-only page brevity", pipeline.extra_prompt)
-        self.assertIn("at most 2 short sentence(s) per page", pipeline.extra_prompt)
-
-    def test_story_generate_response_serializes_to_backend_camel_case(self) -> None:
+    def test_story_generate_response_defaults_slide_vocabulary_to_empty_array(self) -> None:
         response = StoryGenerateResponse(
             title="Mina's Adventure",
             child_name="Mina",
@@ -181,9 +204,7 @@ class TestBackendIntegrationContract(unittest.TestCase):
         )
 
         payload = response.model_dump(mode="json", by_alias=True)
-        self.assertEqual(payload["childName"], "Mina")
-        self.assertEqual(payload["slides"][0]["textKr"], "안녕")
-        self.assertEqual(payload["slides"][0]["textNative"], "hello")
+        self.assertEqual(payload["slides"][0]["vocabulary"], [])
 
     def test_story_response_language_codes_are_lowercase_iso(self) -> None:
         story = Story(
@@ -258,7 +279,7 @@ class TestBackendIntegrationContract(unittest.TestCase):
 
         self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
 
-    def test_story_response_prepends_cover_slide_when_cover_asset_exists(self) -> None:
+    def test_story_response_prepends_cover_slide_when_cover_url_is_available(self) -> None:
         story = Story(
             title_primary="제목",
             title_secondary="Title",
@@ -274,7 +295,7 @@ class TestBackendIntegrationContract(unittest.TestCase):
                     text_secondary=f"Sentence {index}",
                     illustration_prompt=f"Scene {index}",
                 )
-                for index in range(1, 3)
+                for index in range(1, 4)
             ],
         )
         request = StoryGenerateRequest.model_validate(
@@ -289,23 +310,79 @@ class TestBackendIntegrationContract(unittest.TestCase):
         payload = map_story_to_generate_response(
             story,
             request,
-            page_assets={
-                0: {"image_url": "/cover.png", "audio_url_kr": None, "audio_url_native": None},
-                1: {
-                    "image_url": "/page_01.png",
-                    "audio_url_kr": "/page_01_kr.wav",
-                    "audio_url_native": "/page_01_en.wav",
-                },
-            },
+            cover_image_url="https://storage.example/cover.png",
         ).model_dump(mode="json", by_alias=True)
 
-        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
-        self.assertEqual(payload["slides"][0]["imageUrl"], "/cover.png")
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2, 3])
+        self.assertEqual(payload["slides"][0]["imageUrl"], "https://storage.example/cover.png")
         self.assertEqual(payload["slides"][0]["textKr"], "")
         self.assertEqual(payload["slides"][0]["textNative"], "")
-        self.assertIsNone(payload["slides"][0]["audioUrlKr"])
-        self.assertEqual(payload["slides"][1]["imageUrl"], "/page_01.png")
-        self.assertEqual(payload["slides"][1]["audioUrlKr"], "/page_01_kr.wav")
+        self.assertEqual(payload["slides"][1]["textKr"], "문장 1")
+
+    def test_story_response_preserves_page_vocabulary_on_matching_slide(self) -> None:
+        story = Story(
+            title_primary="제목",
+            title_secondary="Title",
+            author_name="Mina",
+            primary_language="Korean",
+            secondary_language="Vietnamese",
+            image_style="storybook",
+            main_character_design="child",
+            pages=[
+                Page(
+                    page_number=1,
+                    text_primary="민아는 우주복을 입었어요.",
+                    text_secondary="Mina mặc bộ đồ phi hành gia.",
+                    illustration_prompt="Scene 1",
+                    vocabulary=[
+                        VocabularyEntry(
+                            entry_id="page-01-word-01",
+                            primary_word="우주복",
+                            secondary_word="bộ đồ phi hành gia",
+                            primary_definition="우주에서 입는 특별한 옷",
+                            secondary_definition="áo đặc biệt mặc khi bay vào không gian",
+                        )
+                    ],
+                ),
+                Page(
+                    page_number=2,
+                    text_primary="달에 도착했어요.",
+                    text_secondary="Đã đến mặt trăng.",
+                    illustration_prompt="Scene 2",
+                    vocabulary=[
+                        VocabularyEntry(
+                            entry_id=None,
+                            primary_word="달",
+                            secondary_word="mặt trăng",
+                            primary_definition="밤하늘에 뜨는 둥근 구슬",
+                            secondary_definition="quả cầu tròn trên bầu trời đêm",
+                        )
+                    ],
+                ),
+            ],
+        )
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "space",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "vi",
+            }
+        )
+
+        payload = map_story_to_generate_response(story, request).model_dump(
+            mode="json",
+            by_alias=True,
+        )
+
+        self.assertEqual(payload["slides"][0]["vocabulary"][0]["entryId"], "page-01-word-01")
+        self.assertEqual(payload["slides"][0]["vocabulary"][0]["primaryWord"], "우주복")
+        self.assertEqual(
+            payload["slides"][0]["vocabulary"][0]["secondaryDefinition"],
+            "áo đặc biệt mặc khi bay vào không gian",
+        )
+        self.assertEqual(payload["slides"][1]["vocabulary"][0]["entryId"], "page-02-word-01")
+        self.assertEqual(payload["slides"][1]["vocabulary"][0]["secondaryWord"], "mặt trăng")
 
 
 if __name__ == "__main__":

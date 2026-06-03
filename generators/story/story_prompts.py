@@ -58,6 +58,7 @@ class StoryPrompt:
         style_preset: str = "vibrant_storybook",
         page_count: int | None = None,
         tone_hint: str = "",
+        character_bible_prompt: str = "",
         gender: Optional[str] = None,
         family_situation: Optional[str] = None,
         interest: Optional[str] = None,
@@ -103,6 +104,7 @@ class StoryPrompt:
                 style_preset=style_preset,
                 page_count=page_count,
                 tone_hint=tone_hint,
+                character_bible_prompt=character_bible_prompt,
                 **modules,
             )
         except KeyError as exc:

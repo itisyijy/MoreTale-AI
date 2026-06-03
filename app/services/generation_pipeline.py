@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
+from generators.character.character_model import CharacterBible
 from generators.critic.critic_model import CriticResult
 from generators.quiz.quiz_model import Quiz
 from generators.story.story_model import Story
@@ -85,6 +86,7 @@ class StoryPipelineResult:
     illustration_result: dict[str, Any] | None
     service_errors: dict[str, str | None]
     critic_results: list[CriticResult] = dataclasses.field(default_factory=list)
+    character_bible: CharacterBible | None = None
 
 
 def build_pipeline_request_from_story_request(
@@ -160,7 +162,16 @@ def generate_critic(
     return generator.evaluate(story=story, generation_params=_build_generation_params(request))
 
 
-def generate_story(request: StoryPipelineRequest) -> tuple[Story, str]:
+def generate_character_bible(request: StoryPipelineRequest) -> CharacterBible:
+    from generators.character.character_builder import build_character_bible
+
+    return build_character_bible(request)
+
+
+def generate_story(
+    request: StoryPipelineRequest,
+    character_bible: CharacterBible | None = None,
+) -> tuple[Story, str]:
     from generators.story.story_generator import StoryGenerator
 
     generator = StoryGenerator(
@@ -181,6 +192,7 @@ def generate_story(request: StoryPipelineRequest) -> tuple[Story, str]:
         style_preset=request.style_preset,
         page_count=request.page_count,
         tone_hint=request.tone_hint,
+        character_bible=character_bible,
         gender=request.gender,
         family_situation=request.family_situation,
         interest=request.interest,
@@ -310,7 +322,8 @@ def run_story_generation_pipeline(
     *,
     strict_assets: bool,
 ) -> StoryPipelineResult:
-    story, story_model = generate_story(request)
+    character_bible = generate_character_bible(request)
+    story, story_model = generate_story(request, character_bible)
 
     critic_results: list[CriticResult] = []
     if request.enable_critic:
@@ -332,7 +345,7 @@ def run_story_generation_pipeline(
                 active_request,
                 extra_prompt=active_request.extra_prompt + separator + feedback,
             )
-            story, story_model = generate_story(active_request)
+            story, story_model = generate_story(active_request, character_bible)
 
     output_dir = Path(output_dir_factory(story, story_model))
     story_json_path = write_story_json_to_output_dir(output_dir, story, story_model)
@@ -370,7 +383,10 @@ def run_story_generation_pipeline(
             )
         if request.enable_illustration:
             illustration_future = executor.submit(
-                generate_illustrations, request=request, story=story, output_dir=output_dir
+                generate_illustrations,
+                request=request,
+                story=story,
+                output_dir=output_dir,
             )
 
     if tts_future is not None:
@@ -404,4 +420,5 @@ def run_story_generation_pipeline(
         illustration_result=illustration_result,
         service_errors=service_errors,
         critic_results=critic_results,
+        character_bible=character_bible,
     )
