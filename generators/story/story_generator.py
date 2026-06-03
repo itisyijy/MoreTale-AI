@@ -6,6 +6,7 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+from generators.character.character_model import CharacterBible
 from generators.illustration.illustration_cover_prompt import build_cover_prompt
 from generators.illustration.illustration_prompt_utils import (
     build_illustration_prefix,
@@ -45,6 +46,7 @@ class StoryGenerator:
         style_preset: str = "vibrant_storybook",
         page_count: int | None = None,
         tone_hint: str = "",
+        character_bible: CharacterBible | None = None,
         gender: Optional[str] = None,
         family_situation: Optional[str] = None,
         interest: Optional[str] = None,
@@ -68,6 +70,9 @@ class StoryGenerator:
             style_preset=style_preset,
             page_count=page_count,
             tone_hint=tone_hint,
+            character_bible_prompt=(
+                character_bible.art_consistency_prompt if character_bible else ""
+            ),
             gender=gender,
             family_situation=family_situation,
             interest=interest,
@@ -91,6 +96,8 @@ class StoryGenerator:
                 story = Story.model_validate_json(response.text)
 
             self._populate_illustration_fields(story)
+            if character_bible is not None:
+                self._apply_character_bible_fields(story, character_bible)
             self._populate_vocabulary_fields(story)
             return story
 
@@ -118,6 +125,27 @@ class StoryGenerator:
                     "[warn] Could not split illustration_prompt into scene prompt; "
                     f"page={page.page_number} method={method}"
                 )
+
+        story.cover_illustration_prompt = build_cover_prompt(story)
+
+    @staticmethod
+    def _apply_character_bible_fields(
+        story: Story,
+        character_bible: CharacterBible,
+    ) -> None:
+        story.main_character_design = character_bible.fixed_design
+        story.illustration_prefix = build_illustration_prefix(
+            story.image_style,
+            story.main_character_design,
+        )
+
+        for page in story.pages:
+            scene = (
+                (page.illustration_scene_prompt or "").strip()
+                or (page.illustration_prompt or "").strip()
+            )
+            if scene:
+                page.illustration_prompt = f"{story.illustration_prefix}, {scene}"
 
         story.cover_illustration_prompt = build_cover_prompt(story)
 

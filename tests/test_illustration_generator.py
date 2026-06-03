@@ -83,7 +83,9 @@ class TestIllustrationPromptBuild(unittest.TestCase):
         prompt, mode = IllustrationGenerator._build_page_prompt(story=story, page=page)
 
         self.assertEqual(mode, "full_only")
-        self.assertEqual(prompt, "fallback full prompt")
+        self.assertIn("CHARACTER CONSISTENCY LOCK", prompt)
+        self.assertIn("Fixed character design: Main character", prompt)
+        self.assertIn("fallback full prompt", prompt)
 
     def test_build_page_prompt_avoids_double_prefix_when_scene_equals_full_prompt(self):
         story = SimpleNamespace(
@@ -101,7 +103,36 @@ class TestIllustrationPromptBuild(unittest.TestCase):
         prompt, mode = IllustrationGenerator._build_page_prompt(story=story, page=page)
 
         self.assertEqual(mode, "full_only")
-        self.assertEqual(prompt, full_prompt)
+        self.assertIn("CHARACTER CONSISTENCY LOCK", prompt)
+        self.assertIn(full_prompt, prompt)
+
+    def test_build_page_prompt_uses_character_bible_lock(self):
+        from generators.character.character_model import CharacterBible
+
+        story = SimpleNamespace(
+            illustration_prefix="Dreamy style, Main character",
+            image_style="Dreamy style",
+            main_character_design="loose design",
+        )
+        page = SimpleNamespace(
+            page_number=4,
+            illustration_prompt="Dreamy style, Main character, full prompt details",
+            illustration_scene_prompt="page specific scene",
+        )
+        bible = CharacterBible(
+            fixed_design="fixed bible design",
+            art_consistency_prompt="CHARACTER CONSISTENCY LOCK: fixed bible design",
+        )
+
+        prompt, mode = IllustrationGenerator._build_page_prompt(
+            story=story,
+            page=page,
+            character_bible=bible,
+        )
+
+        self.assertEqual(mode, "scene_plus_full")
+        self.assertIn("CHARACTER CONSISTENCY LOCK: fixed bible design", prompt)
+        self.assertNotIn("Fixed character design: loose design", prompt)
 
     def test_build_cover_prompt_forbids_visible_title_text(self):
         story = SimpleNamespace(
@@ -184,6 +215,8 @@ class TestIllustrationGenerationPipeline(unittest.TestCase):
             )
             self.assertEqual(result["cover"]["status"], "generated")
             self.assertEqual(len(generator.seen_requests), 3)
+            self.assertIn("CHARACTER CONSISTENCY LOCK", generator.seen_requests[0][0])
+            self.assertIn("CHARACTER CONSISTENCY LOCK", generator.seen_requests[2][0])
             self.assertEqual(generator.seen_requests[0][1], None)
             self.assertEqual(generator.seen_requests[1][1], None)
             self.assertEqual(generator.seen_requests[2][1], "5:4")
