@@ -139,6 +139,29 @@ class TestBackendIntegrationContract(unittest.TestCase):
         self.assertIn("Child nationality: KR", pipeline.extra_prompt)
         self.assertIn("Parent country: VN", pipeline.extra_prompt)
 
+    def test_test_sentence_limit_is_added_only_when_env_is_set(self) -> None:
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "friendship",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "en",
+            }
+        )
+
+        pipeline = map_generate_request_to_pipeline(request)
+        self.assertNotIn("Test-only page brevity", pipeline.extra_prompt)
+
+        with patch.dict(
+            os.environ,
+            {"MORETALE_TEST_MAX_SENTENCES_PER_PAGE": "2"},
+            clear=False,
+        ):
+            pipeline = map_generate_request_to_pipeline(request)
+
+        self.assertIn("Test-only page brevity", pipeline.extra_prompt)
+        self.assertIn("at most 2 short sentence(s) per page", pipeline.extra_prompt)
+
     def test_story_generate_response_serializes_to_backend_camel_case(self) -> None:
         response = StoryGenerateResponse(
             title="Mina's Adventure",
@@ -234,6 +257,55 @@ class TestBackendIntegrationContract(unittest.TestCase):
         )
 
         self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
+
+    def test_story_response_prepends_cover_slide_when_cover_asset_exists(self) -> None:
+        story = Story(
+            title_primary="제목",
+            title_secondary="Title",
+            author_name="Mina",
+            primary_language="Korean",
+            secondary_language="English",
+            image_style="storybook",
+            main_character_design="child",
+            pages=[
+                Page(
+                    page_number=index,
+                    text_primary=f"문장 {index}",
+                    text_secondary=f"Sentence {index}",
+                    illustration_prompt=f"Scene {index}",
+                )
+                for index in range(1, 3)
+            ],
+        )
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "friendship",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "en",
+            }
+        )
+
+        payload = map_story_to_generate_response(
+            story,
+            request,
+            page_assets={
+                0: {"image_url": "/cover.png", "audio_url_kr": None, "audio_url_native": None},
+                1: {
+                    "image_url": "/page_01.png",
+                    "audio_url_kr": "/page_01_kr.wav",
+                    "audio_url_native": "/page_01_en.wav",
+                },
+            },
+        ).model_dump(mode="json", by_alias=True)
+
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
+        self.assertEqual(payload["slides"][0]["imageUrl"], "/cover.png")
+        self.assertEqual(payload["slides"][0]["textKr"], "")
+        self.assertEqual(payload["slides"][0]["textNative"], "")
+        self.assertIsNone(payload["slides"][0]["audioUrlKr"])
+        self.assertEqual(payload["slides"][1]["imageUrl"], "/page_01.png")
+        self.assertEqual(payload["slides"][1]["audioUrlKr"], "/page_01_kr.wav")
 
 
 if __name__ == "__main__":

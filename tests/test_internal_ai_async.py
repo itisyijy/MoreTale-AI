@@ -216,6 +216,7 @@ class TestInternalAIStoryRunner(unittest.TestCase):
                 (output_dir / "illustrations").mkdir(parents=True, exist_ok=True)
                 (output_dir / "audio" / "01_korean").mkdir(parents=True, exist_ok=True)
                 (output_dir / "audio" / "02_english").mkdir(parents=True, exist_ok=True)
+                (output_dir / "illustrations" / "cover.png").write_bytes(b"cover")
                 for page_number in range(1, 3):
                     (output_dir / "illustrations" / f"page_{page_number:02d}.png").write_bytes(
                         b"image"
@@ -254,17 +255,25 @@ class TestInternalAIStoryRunner(unittest.TestCase):
         self.assertTrue(pipeline_request.enable_illustration)
         self.assertTrue(pipeline_request.enable_cover_illustration)
         self.assertTrue(captured["strict_assets"])
-        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1])
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
         self.assertEqual(
             payload["slides"][0]["imageUrl"],
+            "/static/outputs/story-job-1/illustrations/cover.png",
+        )
+        self.assertEqual(payload["slides"][0]["textKr"], "")
+        self.assertEqual(payload["slides"][0]["textNative"], "")
+        self.assertIsNone(payload["slides"][0]["audioUrlKr"])
+        self.assertIsNone(payload["slides"][0]["audioUrlNative"])
+        self.assertEqual(
+            payload["slides"][1]["imageUrl"],
             "/static/outputs/story-job-1/illustrations/page_01.png",
         )
         self.assertEqual(
-            payload["slides"][0]["audioUrlKr"],
+            payload["slides"][1]["audioUrlKr"],
             "/static/outputs/story-job-1/audio/01_korean/page_01_primary.wav",
         )
         self.assertEqual(
-            payload["slides"][0]["audioUrlNative"],
+            payload["slides"][1]["audioUrlNative"],
             "/static/outputs/story-job-1/audio/02_english/page_01_secondary.wav",
         )
 
@@ -305,6 +314,7 @@ class TestInternalAIStoryRunner(unittest.TestCase):
                 (output_dir / "illustrations").mkdir(parents=True, exist_ok=True)
                 (output_dir / "audio" / "01_korean").mkdir(parents=True, exist_ok=True)
                 (output_dir / "audio" / "02_english").mkdir(parents=True, exist_ok=True)
+                (output_dir / "illustrations" / "cover.png").write_bytes(b"cover")
                 (output_dir / "illustrations" / "page_01.png").write_bytes(b"image")
                 (
                     output_dir / "audio" / "01_korean" / "page_01_primary.wav"
@@ -330,13 +340,17 @@ class TestInternalAIStoryRunner(unittest.TestCase):
                 )
 
         bucket = client_factory.return_value.bucket.return_value
-        self.assertEqual(bucket.blob.call_count, 3)
+        self.assertEqual(bucket.blob.call_count, 4)
         self.assertEqual(
             payload["slides"][0]["imageUrl"],
+            "https://storage.googleapis.com/moretale-assets/generated/story-job-1/illustrations/cover.png",
+        )
+        self.assertEqual(
+            payload["slides"][1]["imageUrl"],
             "https://storage.googleapis.com/moretale-assets/generated/story-job-1/illustrations/page_01.png",
         )
         self.assertEqual(
-            payload["slides"][0]["audioUrlKr"],
+            payload["slides"][1]["audioUrlKr"],
             "https://storage.googleapis.com/moretale-assets/generated/story-job-1/audio/01_korean/page_01_primary.wav",
         )
 

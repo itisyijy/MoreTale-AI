@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from app.core.languages import resolve_language_name, to_story_iso
 from app.core.config import get_settings
 from app.schemas.story import (
@@ -190,7 +192,28 @@ def _build_extra_prompt(req: StoryGenerateRequest) -> str:
     if profile_lines:
         sections.append("[Profile context]\n" + "\n".join(f"  {l}" for l in profile_lines))
 
+    test_sentence_limit = _resolve_test_max_sentences_per_page()
+    if test_sentence_limit is not None:
+        sections.append(
+            "[Test-only page brevity]\n"
+            f"  This run is using a test page-count setting. Write at most {test_sentence_limit} "
+            "short sentence(s) per page in each language.\n"
+            "  Do not compress multiple story beats into one page. Keep each page to one clear "
+            "scene or action, and distribute setup, conflict, and resolution across the available pages."
+        )
+
     return "\n\n".join(sections)
+
+
+def _resolve_test_max_sentences_per_page() -> int | None:
+    raw = (os.getenv("MORETALE_TEST_MAX_SENTENCES_PER_PAGE") or "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
 
 
 def _build_theme(req: StoryGenerateRequest) -> str:
@@ -314,17 +337,34 @@ def map_story_to_generate_response(
     page_assets: PageAssetUrlMap | None = None,
 ) -> StoryGenerateResponse:
     page_assets = page_assets or {}
-    slides = [
-        GeneratedSlide(
-            order=page.page_number - 1,
-            text_kr=page.text_primary,
-            text_native=page.text_secondary,
-            image_url=page_assets.get(page.page_number, {}).get("image_url"),
-            audio_url_kr=page_assets.get(page.page_number, {}).get("audio_url_kr"),
-            audio_url_native=page_assets.get(page.page_number, {}).get("audio_url_native"),
+    cover_assets = page_assets.get(0, {})
+    has_cover_slide = bool(cover_assets.get("image_url"))
+    slides: list[GeneratedSlide] = []
+
+    if has_cover_slide:
+        slides.append(
+            GeneratedSlide(
+                order=0,
+                text_kr="",
+                text_native="",
+                image_url=cover_assets.get("image_url"),
+                audio_url_kr=None,
+                audio_url_native=None,
+            )
         )
-        for page in story.pages
-    ]
+
+    for page in story.pages:
+        assets = page_assets.get(page.page_number, {})
+        slides.append(
+            GeneratedSlide(
+                order=page.page_number if has_cover_slide else page.page_number - 1,
+                text_kr=page.text_primary,
+                text_native=page.text_secondary,
+                image_url=assets.get("image_url"),
+                audio_url_kr=assets.get("audio_url_kr"),
+                audio_url_native=assets.get("audio_url_native"),
+            )
+        )
 
     # Always return lowercase ISO codes — backend Swagger examples use ko/vi/en.
     primary_iso = to_story_iso(req.primary_language) or to_story_iso(story.primary_language)
