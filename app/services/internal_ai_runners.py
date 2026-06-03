@@ -54,6 +54,7 @@ def run_story_job(job_id: str, request_payload: dict[str, Any]) -> dict[str, Any
             primary_language=pipeline_request.primary_lang,
             secondary_language=pipeline_request.secondary_lang,
         ),
+        cover_image_url=_build_cover_asset_url(run_dir=pipeline_result.output_dir),
     )
     return response.model_dump(mode="json", by_alias=True)
 
@@ -94,6 +95,11 @@ def _build_story_generate_asset_urls(
         }
 
     return page_assets
+
+
+def _build_cover_asset_url(*, run_dir: Path) -> str | None:
+    cover_path = _find_first_file(run_dir / "illustrations", "cover.*")
+    return _upload_if_file(cover_path)
 
 
 def _find_first_file(directory: Path, pattern: str) -> Path | None:

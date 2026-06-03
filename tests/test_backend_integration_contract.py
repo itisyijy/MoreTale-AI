@@ -279,6 +279,46 @@ class TestBackendIntegrationContract(unittest.TestCase):
 
         self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2])
 
+    def test_story_response_prepends_cover_slide_when_cover_url_is_available(self) -> None:
+        story = Story(
+            title_primary="제목",
+            title_secondary="Title",
+            author_name="Mina",
+            primary_language="Korean",
+            secondary_language="English",
+            image_style="storybook",
+            main_character_design="child",
+            pages=[
+                Page(
+                    page_number=index,
+                    text_primary=f"문장 {index}",
+                    text_secondary=f"Sentence {index}",
+                    illustration_prompt=f"Scene {index}",
+                )
+                for index in range(1, 4)
+            ],
+        )
+        request = StoryGenerateRequest.model_validate(
+            {
+                "prompt": "friendship",
+                "childName": "Mina",
+                "primaryLanguage": "ko",
+                "secondaryLanguage": "en",
+            }
+        )
+
+        payload = map_story_to_generate_response(
+            story,
+            request,
+            cover_image_url="https://storage.example/cover.png",
+        ).model_dump(mode="json", by_alias=True)
+
+        self.assertEqual([slide["order"] for slide in payload["slides"]], [0, 1, 2, 3])
+        self.assertEqual(payload["slides"][0]["imageUrl"], "https://storage.example/cover.png")
+        self.assertEqual(payload["slides"][0]["textKr"], "")
+        self.assertEqual(payload["slides"][0]["textNative"], "")
+        self.assertEqual(payload["slides"][1]["textKr"], "문장 1")
+
     def test_story_response_preserves_page_vocabulary_on_matching_slide(self) -> None:
         story = Story(
             title_primary="제목",

@@ -328,11 +328,12 @@ def map_story_to_generate_response(
     story: Story,
     req: StoryGenerateRequest,
     page_assets: PageAssetUrlMap | None = None,
+    cover_image_url: str | None = None,
 ) -> StoryGenerateResponse:
     page_assets = page_assets or {}
     slides = [
         GeneratedSlide(
-            order=page.page_number - 1,
+            order=page.page_number if cover_image_url else page.page_number - 1,
             text_kr=page.text_primary,
             text_native=page.text_secondary,
             image_url=page_assets.get(page.page_number, {}).get("image_url"),
@@ -342,6 +343,19 @@ def map_story_to_generate_response(
         )
         for page in story.pages
     ]
+    if cover_image_url:
+        slides.insert(
+            0,
+            GeneratedSlide(
+                order=0,
+                text_kr="",
+                text_native="",
+                image_url=cover_image_url,
+                audio_url_kr=None,
+                audio_url_native=None,
+                vocabulary=[],
+            ),
+        )
 
     # Always return lowercase ISO codes — backend Swagger examples use ko/vi/en.
     primary_iso = to_story_iso(req.primary_language) or to_story_iso(story.primary_language)
