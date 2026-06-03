@@ -70,15 +70,6 @@ def _build_story_generate_asset_urls(
     primary_slug = slugify_language_name(primary_language)
     secondary_slug = slugify_language_name(secondary_language)
     page_assets: dict[int, dict[str, str | None]] = {}
-    cover_path = _find_first_file(run_dir / "illustrations", "cover.*")
-
-    cover_url = _upload_if_file(cover_path)
-    if cover_url:
-        page_assets[0] = {
-            "image_url": cover_url,
-            "audio_url_kr": None,
-            "audio_url_native": None,
-        }
 
     for page in story.pages:
         page_number = page.page_number
